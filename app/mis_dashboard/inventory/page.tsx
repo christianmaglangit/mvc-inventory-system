@@ -93,7 +93,7 @@ export default function InventoryPage() {
             />
             <NavItem 
               icon={<HardDrive size={18} />} 
-              label="Computer Inventory" 
+              label="Inventory Data" 
               active={activeTab === 'Inventory'} 
               onClick={() => router.push('/mis_dashboard/inventory')} 
             />
