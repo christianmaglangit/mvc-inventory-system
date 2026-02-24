@@ -16,7 +16,7 @@ import Swal from 'sweetalert2';
 // --- Interfaces ---
 interface InventoryItem {
   id: string;
-  user_id: string;
+  user_id: string; 
   building: string;
   department: string;
   user_full_name: string;
@@ -28,7 +28,6 @@ interface InventoryItem {
   processor: string;
   ram: string;
   hard_drive: string;
-  // --- Computer Parts Specific Fields (Based sa imong SQL) ---
   item_name?: string;
   brand_model?: string;
   serial_number?: string;
@@ -56,23 +55,22 @@ export default function InventoryPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  
   const [inventoryList, setInventoryList] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
 
   const initialForm = {
-    // PC
-    building: 'Admin', department: '', user_full_name: '', ip_address: '', mac_address: '',
-    os_version: '', ms_office_version: '', kaspersky: 'Active', processor: '', ram: '', hard_drive: '',
-    // Parts (Base sa SQL nimo)
-    item_name: '', brand_model: '', serial_number: '', quantity: 0, unit: 'Pcs', status: 'New', location: 'MIS STORAGE'
+    building: 'Admin', department: 'MIS', user_full_name: '', ip_address: '', mac_address: '',
+    os_version: 'Windows 10 Pro', ms_office_version: 'Office 2019', kaspersky: 'Active', 
+    processor: 'Core i3', ram: '8GB', hard_drive: '256GB SSD',
+    item_name: 'Monitor', brand_model: 'Dell', serial_number: '', quantity: 1, unit: 'Pcs', status: 'New', location: 'MIS STORAGE'
   };
 
   const [formData, setFormData] = useState(initialForm);
   const router = useRouter();
 
   const toTitleCase = (str: string) => {
+    if (!str) return "";
     return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
 
@@ -80,8 +78,6 @@ export default function InventoryPage() {
     const map: Record<string, string> = {
       'Personal Computer': 'inventory_pc',
       'Computer Parts': 'inventory_computer_parts',
-      'Documents': 'inventory_docs',
-      'Wires & Cables': 'inventory_wires'
     };
     return map[cat] || 'inventory_pc';
   };
@@ -102,7 +98,7 @@ export default function InventoryPage() {
       const { data, error } = await supabase
         .from(getTableName(activeCategory))
         .select('*')
-        .eq('user_id', user.id) // Private data logic
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -136,33 +132,27 @@ export default function InventoryPage() {
           processor: formData.processor, ram: formData.ram, hard_drive: formData.hard_drive
         };
       } else {
-        // Computer Parts Payload base sa imong SQL columns
         payload = { ...payload,
-          item_name: formData.item_name,
-          brand_model: formData.brand_model,
-          serial_number: formData.serial_number,
-          quantity: formData.quantity,
-          unit: formData.unit,
-          status: formData.status,
-          location: formData.location
+          item_name: formData.item_name, brand_model: formData.brand_model,
+          serial_number: formData.serial_number, quantity: formData.quantity,
+          unit: formData.unit, status: formData.status, location: formData.location,
+          user_full_name: formData.status === 'Used' ? formData.user_full_name : ""
         };
       }
 
-      if (editingId) {
-        const { error } = await supabase.from(table).update(payload).eq('id', editingId).eq('user_id', user.id);
-        if (error) throw error;
-        Swal.fire({ title: 'Updated!', icon: 'success', confirmButtonColor: '#7f0000' });
-      } else {
-        const { error } = await supabase.from(table).insert([payload]);
-        if (error) throw error;
-        Swal.fire({ title: 'Success!', icon: 'success', confirmButtonColor: '#7f0000' });
-      }
+      const { error } = editingId 
+        ? await supabase.from(table).update(payload).eq('id', editingId).eq('user_id', user.id)
+        : await supabase.from(table).insert([payload]);
+
+      if (error) throw error;
+
+      await Swal.fire({ title: 'Success!', text: 'Record saved.', icon: 'success', confirmButtonColor: '#7f0000' });
       setIsModalOpen(false);
       setEditingId(null);
       setFormData(initialForm);
       fetchData();
     } catch (error: any) {
-      Swal.fire('Error', error.message, 'error');
+      Swal.fire('Database Error', error.message, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -175,24 +165,22 @@ export default function InventoryPage() {
     doc.setFontSize(10);
     doc.text(`Inventory Report: ${activeCategory}`, 14, 22);
 
-    const tableRows: any[] = [];
     const tableColumn = activeCategory === 'Personal Computer' 
       ? ["Building", "Dept", "User", "IP Address", "MAC", "OS", "Office", "Kaspersky", "CPU", "RAM", "HDD"]
-      : ["Item Name", "Brand/Model", "Serial Number", "Qty", "Unit", "Status", "Location"];
+      : ["Item Name", "Brand/Model", "User", "Qty", "Unit", "Status", "Location"];
 
-    filteredData.forEach(item => {
-      tableRows.push(activeCategory === 'Personal Computer' ? [
-        item.building, item.department, item.user_full_name,
-        item.ip_address, item.mac_address, item.os_version, item.ms_office_version,
-        item.kaspersky, item.processor, item.ram, item.hard_drive
+    const tableRows = filteredData.map(item => activeCategory === 'Personal Computer' ? [
+        item.building || "", item.department || "", item.user_full_name || "",
+        item.ip_address || "", item.mac_address || "", item.os_version || "", 
+        item.ms_office_version || "", item.kaspersky || "", item.processor || "", 
+        item.ram || "", item.hard_drive || ""
       ] : [
-        item.item_name, item.brand_model, item.serial_number,
-        item.quantity, item.unit, item.status, item.location
+        item.item_name || "", item.brand_model || "", item.user_full_name || "N/A",
+        item.quantity?.toString() || "0", item.unit || "", item.status || "", item.location || ""
       ]);
-    });
 
-    autoTable(doc, { head: [tableColumn], body: tableRows, startY: 30, styles: { fontSize: 7 }, headStyles: { fillColor: [127, 0, 0] } });
-    doc.save(`MVC_Inventory_${activeCategory.replace(' ', '_')}.pdf`);
+    autoTable(doc, { head: [tableColumn], body: tableRows as any, startY: 30, styles: { fontSize: 7 }, headStyles: { fillColor: [127, 0, 0] } });
+    doc.save(`MVC_${activeCategory}.pdf`);
   };
 
   const handleEdit = (item: InventoryItem) => {
@@ -208,13 +196,11 @@ export default function InventoryPage() {
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#7f0000',
-      cancelButtonColor: '#64748b',
       confirmButtonText: 'Yes, delete it!'
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
           await supabase.from(getTableName(activeCategory)).delete().eq('id', id).eq('user_id', user.id);
-          Swal.fire('Deleted!', '', 'success');
           fetchData();
         } catch (error: any) {
           Swal.fire('Error', error.message, 'error');
@@ -223,34 +209,52 @@ export default function InventoryPage() {
     });
   };
 
-  const initials = user?.user_metadata?.full_name?.split(' ').map((n: any) => n[0]).join('').toUpperCase().substring(0, 2) || 'MT';
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/');
+  };
+
+  const displayName = user?.user_metadata?.full_name || 'MIS User';
+  const displayDept = user?.user_metadata?.department || 'IT Department';
+  const initials = displayName.split(' ').map((n: any) => n[0]).join('').toUpperCase().substring(0, 2);
 
   const filteredData = inventoryList.filter(item => 
     (item.user_full_name || item.item_name || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden relative">
+    <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden relative text-[11px]">
+      
+      {/* --- SIDEBAR --- */}
       <aside className="w-64 border-r border-slate-200 bg-white flex flex-col shrink-0 z-20 shadow-sm">
-        <div className="h-16 flex items-center px-6 border-b border-slate-100 font-bold text-red-900 gap-3">
-          <div className="w-8 h-8 bg-red-900 rounded flex items-center justify-center text-white shadow-md"><Server size={20} /></div>
-          <span>MVC.MIS</span>
+        <div className="h-16 flex items-center px-6 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-red-900 rounded flex items-center justify-center shadow-md">
+              <Server className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-lg font-bold tracking-tight text-red-900">MVC.IS</span>
+          </div>
         </div>
 
         <nav className="flex-1 p-4 space-y-1">
-          <NavItem icon={<LayoutDashboard size={18} />} label="Overview" active={activeTab === 'Dashboard'} onClick={() => router.push('/mis_dashboard')} />
-          <NavItem icon={<HardDrive size={18} />} label="Inventory Data" active={activeTab === 'Inventory'} onClick={() => setActiveTab('Inventory')} />
+          <NavItem icon={<LayoutDashboard size={18} />} label="Overview" onClick={() => router.push('/mis_dashboard')} />
+          <NavItem icon={<HardDrive size={18} />} label="Inventory Data" active={true} />
         </nav>
 
+        {/* --- LOGOUT & PROFILE --- */}
         <div className="p-4 border-t border-slate-100 space-y-2">
-           <button onClick={() => supabase.auth.signOut().then(() => router.push('/'))} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all text-xs font-bold text-slate-500 hover:text-red-900 group">
-             <LogOut size={18} /><span>Sign Out</span>
+           <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all text-xs font-bold text-slate-500 hover:text-red-900 hover:bg-red-50 group border border-transparent hover:border-red-100">
+             <LogOut size={18} className="group-hover:rotate-12 transition-transform" />
+             <span>Sign Out</span>
            </button>
+           
            <div className="flex items-center gap-3 px-3 py-3 rounded-lg bg-slate-50 border border-slate-200">
-             <div className="w-8 h-8 rounded bg-red-100 flex items-center justify-center font-black text-red-800 text-[10px] shrink-0">{initials}</div>
+             <div className="w-8 h-8 rounded bg-red-100 flex items-center justify-center font-black text-red-800 text-[10px] border border-red-200 shrink-0">
+               {initials}
+             </div>
              <div className="flex-1 min-w-0">
-               <p className="text-xs font-bold truncate">{user?.user_metadata?.full_name || 'MIS User'}</p>
-               <p className="text-[10px] text-slate-500 truncate font-medium">{user?.user_metadata?.department || 'IT Department'}</p>
+               <p className="text-xs font-bold text-slate-900 truncate">{displayName}</p>
+               <p className="text-[10px] text-slate-500 truncate font-medium">{displayDept}</p>
              </div>
            </div>
         </div>
@@ -260,45 +264,45 @@ export default function InventoryPage() {
         <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-6 shrink-0 z-10 sticky top-0">
           <h1 className="text-lg font-bold tracking-tight">Inventory Management</h1>
           <div className="relative group">
-            <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
-            <input type="text" placeholder="Search my records..." className="bg-slate-100 border rounded-md py-2 pl-9 pr-4 text-xs w-64 focus:outline-none focus:bg-white transition-all" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <Search className="absolute left-3 top-2.5 text-slate-400 group-focus-within:text-red-900" size={16} />
+            <input type="text" placeholder="Search my records..." className="bg-slate-100 border border-slate-200 rounded-md py-2 pl-9 pr-4 text-xs w-64 focus:outline-none focus:bg-white transition-all shadow-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
         </header>
 
         <div className="flex-1 overflow-auto p-6 md:p-8 space-y-6 custom-scrollbar">
           <div className="flex bg-white border border-slate-200 rounded-lg p-1.5 shadow-sm w-fit gap-1">
-            <TabBtn label="Personal Computer" icon={<Laptop size={14}/>} active={activeCategory === 'Personal Computer'} onClick={() => setActiveCategory('Personal Computer')} />
-            <TabBtn label="Computer Parts" icon={<Cpu size={14}/>} active={activeCategory === 'Computer Parts'} onClick={() => setActiveCategory('Computer Parts')} />
+            <TabBtn label="Personal Computer" active={activeCategory === 'Personal Computer'} onClick={() => setActiveCategory('Personal Computer')} />
+            <TabBtn label="Computer Parts" active={activeCategory === 'Computer Parts'} onClick={() => setActiveCategory('Computer Parts')} />
           </div>
 
           <div className="flex justify-between items-center">
-            <h2 className="font-bold text-slate-800">{activeCategory} List</h2>
-            <div className="flex items-center gap-3">
-              <button onClick={handleExportPDF} className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 hover:text-red-900 transition-all shadow-sm"><Download size={16} /> Export PDF</button>
-              <button onClick={() => { setEditingId(null); setFormData(initialForm); setIsModalOpen(true); }} className="flex items-center gap-2 px-4 py-2.5 bg-red-900 text-white rounded-lg text-xs font-bold hover:bg-red-800 shadow-md active:scale-95 transition-all"><Plus size={16} /> Add Record</button>
+            <h2 className="font-bold text-slate-800 text-[14px]">{activeCategory} List</h2>
+            <div className="flex gap-2">
+              <button onClick={handleExportPDF} className="flex items-center border border-slate-200 gap-2 px-4 py-2 bg-white text-xs font-bold rounded-lg hover:bg-slate-50 transition-all shadow-sm"><Download size={16} /> PDF Report</button>
+              <button onClick={() => { setEditingId(null); setFormData(initialForm); setIsModalOpen(true); }} className="flex items-center gap-2 px-4 py-2 bg-red-900 text-white text-xs font-bold rounded-lg shadow-md active:scale-95 transition-all"><Plus size={16} /> Add Record</button>
             </div>
           </div>
 
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
             <div className="overflow-x-auto custom-scrollbar">
-              <table className="w-full text-left text-[11px] text-slate-600 whitespace-nowrap min-w-max border-collapse">
-                <thead className="bg-slate-50/80 font-bold border-b border-slate-200 uppercase text-slate-500">
+              <table className="w-full text-left text-slate-600 whitespace-nowrap min-w-max border-collapse">
+                <thead className="bg-slate-50 font-bold border-b border-slate-200 uppercase text-slate-500">
                   {activeCategory === 'Personal Computer' ? (
                     <tr>
                       <th className="px-4 py-4 border-r border-slate-100">Building</th><th className="px-4 py-4 border-r border-slate-100">Dept</th>
-                      <th className="px-4 py-4 border-r border-slate-100 bg-white sticky left-0 z-10 shadow-sm">User (Full Name)</th>
+                      <th className="px-4 py-4 border-r border-slate-100 bg-white sticky left-0 z-10 shadow-sm text-slate-900">User (Full Name)</th>
                       <th className="px-4 py-4 border-r border-slate-100">IP Address</th><th className="px-4 py-4 border-r border-slate-100">MAC Address</th>
                       <th className="px-4 py-4 border-r border-slate-100">OS Version</th><th className="px-4 py-4 border-r border-slate-100">MS Office</th>
                       <th className="px-4 py-4 border-r border-slate-100">Kaspersky</th><th className="px-4 py-4 border-r border-slate-100">Processor</th>
                       <th className="px-4 py-4 border-r border-slate-100">RAM</th><th className="px-4 py-4 border-r border-slate-100">Hard Drive</th>
-                      <th className="px-4 py-4 text-center sticky right-0 bg-slate-50 z-10 border-l border-slate-200">Actions</th>
+                      <th className="px-4 py-4 text-center sticky right-0 bg-slate-50 border-l shadow-sm">Actions</th>
                     </tr>
                   ) : (
                     <tr>
-                      <th className="px-4 py-4 border-r border-slate-100">Item Name</th><th className="px-4 py-4 border-r border-slate-100">Brand/Model</th>
-                      <th className="px-4 py-4 border-r border-slate-100">Serial Number</th><th className="px-4 py-4 border-r border-slate-100">Qty</th>
+                      <th className="px-4 py-4 border-r border-slate-100">Item Name</th><th className="px-4 py-4 border-r border-slate-100">Brand</th>
+                      <th className="px-4 py-4 border-r border-slate-100 bg-white sticky left-0 z-10 shadow-sm text-slate-900 text-left">User</th><th className="px-4 py-4 border-r border-slate-100">Qty</th>
                       <th className="px-4 py-4 border-r border-slate-100">Status</th><th className="px-4 py-4 border-r border-slate-100">Location</th>
-                      <th className="px-4 py-4 text-center sticky right-0 bg-slate-50 border-l border-slate-200">Actions</th>
+                      <th className="px-4 py-4 text-center sticky right-0 bg-slate-50 border-l shadow-sm">Actions</th>
                     </tr>
                   )}
                 </thead>
@@ -314,27 +318,27 @@ export default function InventoryPage() {
                             <td className="px-4 py-3.5 border-r border-slate-50 font-bold text-slate-900 bg-white sticky left-0 z-10 transition-colors group-hover:bg-slate-50">{item.user_full_name}</td>
                             <td className="px-4 py-3.5 border-r border-slate-50 font-mono text-blue-600">{item.ip_address}</td><td className="px-4 py-3.5 border-r border-slate-50 font-mono">{item.mac_address}</td>
                             <td className="px-4 py-3.5 border-r border-slate-50">{item.os_version}</td><td className="px-4 py-3.5 border-r border-slate-50">{item.ms_office_version}</td>
-                            <td className="px-4 py-3.5 border-r border-slate-50"><span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${item.kaspersky?.toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{item.kaspersky}</span></td>
-                            <td className="px-4 py-3.5 border-r border-slate-50">{item.processor}</td><td className="px-4 py-3.5 border-r border-slate-50">{item.ram}</td><td className="px-4 py-3.5 border-r border-slate-50">{item.hard_drive}</td>
+                            <td className="px-4 py-3.5 border-r border-slate-50"><span className={`px-2 py-0.5 rounded-full font-bold border-slate-50 ${item.kaspersky?.toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{item.kaspersky}</span></td>
+                            <td className="px-4 py-3.5 border-r border-slate-50">{item.processor}</td><td className="px-4 py-3.5 border-r border-slate-50">{item.ram}</td><td className="px-4 border-slate-50 py-3.5 border-r">{item.hard_drive}</td>
                           </>
                         ) : (
                           <>
-                            <td className="px-4 py-3.5 border-r border-slate-50 font-bold text-slate-900">{item.item_name}</td><td className="px-4 py-3.5 border-r border-slate-50">{item.brand_model}</td>
-                            <td className="px-4 py-3.5 border-r border-slate-50 font-mono">{item.serial_number || 'N/A'}</td><td className="px-4 py-3.5 border-r border-slate-50 font-bold text-blue-600">{item.quantity} {item.unit}</td>
-                            <td className="px-4 py-3.5 border-r border-slate-50"><span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${item.status === 'New' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>{item.status}</span></td>
-                            <td className="px-4 py-3.5 border-r border-slate-50 italic">{item.location}</td>
+                            <td className="px-4 py-3.5 border-r border-slate-50 font-bold text-slate-900">{item.item_name}</td><td className="px-4 border-slate-50 py-3.5 border-r">{item.brand_model}</td>
+                            <td className="px-4 py-3.5 border-r border-slate-50 bg-white sticky left-0 z-10 group-hover:bg-slate-50 text-left font-semibold">{item.user_full_name || 'N/A'}</td><td className="px-4 py-3.5 border-r border-slate-50 font-bold text-blue-600">{item.quantity} {item.unit}</td>
+                            <td className="px-4 py-3.5 border-r border-slate-50"><span className={`px-2 py-0.5 rounded-full text-[10px] border-slate-50 font-bold ${item.status === 'New' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'}`}>{item.status}</span></td>
+                            <td className="px-4 py-3.5 border-r border-slate-50 italic text-slate-500">{item.location}</td>
                           </>
                         )}
-                        <td className="px-4 py-3.5 text-center sticky right-0 bg-white group-hover:bg-slate-50 border-l border-slate-100">
+                        <td className="px-4 py-3.5 text-center sticky right-0 bg-white group-hover:bg-slate-50 border-l border-slate-100 shadow-sm">
                           <div className="flex gap-1 justify-center">
-                            <button onClick={() => handleEdit(item)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all"><Edit size={14} /></button>
-                            <button onClick={() => handleDelete(item.id, item.user_full_name || item.item_name || "")} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all"><Trash2 size={14} /></button>
+                            <button onClick={() => handleEdit(item)} className="p-1 text-slate-400 hover:text-blue-600 transition-all"><Edit size={14} /></button>
+                            <button onClick={() => handleDelete(item.id, item.user_full_name || item.item_name || "")} className="p-1 text-slate-400 hover:text-red-600 transition-all"><Trash2 size={14} /></button>
                           </div>
                         </td>
                       </tr>
                     ))
                   ) : (
-                    <tr><td colSpan={12} className="p-10 text-center italic text-slate-400 uppercase tracking-widest text-[10px]">No personal records found</td></tr>
+                    <tr><td colSpan={15} className="p-10 text-center italic text-slate-400 uppercase text-[10px]">No records found</td></tr>
                   )}
                 </tbody>
               </table>
@@ -345,47 +349,45 @@ export default function InventoryPage() {
 
       {/* MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all">
-          <form onSubmit={handleSaveRecord} className="bg-white rounded-xl shadow-2xl w-full max-w-4xl border border-slate-200 overflow-hidden">
-            <div className="px-6 py-4 border-b bg-slate-50 flex justify-between items-center font-bold text-slate-800">
-              <h2 className="text-sm uppercase tracking-widest flex items-center gap-2">
-                 {editingId ? <Edit size={18} className="text-blue-600" /> : <Plus size={18} className="text-red-900" />} 
-                 {editingId ? 'Update Record' : 'Register Asset'} ({activeCategory})
-              </h2>
-              <button type="button" onClick={() => setIsModalOpen(false)}><X size={20} /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all text-[11px]">
+          <form onSubmit={handleSaveRecord} className="bg-white rounded-xl shadow-2xl w-full max-w-4xl border border-slate-200 overflow-hidden text-left">
+            <div className="px-6 py-4 border-b bg-slate-50 flex justify-between items-center font-bold text-slate-800 uppercase tracking-widest">
+               <h2 className="text-sm">{editingId ? 'Edit' : 'New'} Record ({activeCategory})</h2>
+               <button type="button" onClick={() => setIsModalOpen(false)}><X size={20} /></button>
             </div>
             <div className="p-8 grid grid-cols-3 gap-6 overflow-y-auto max-h-[70vh]">
               {activeCategory === 'Personal Computer' ? (
                 <>
-                  <InputGroup label="Building" value={formData.building} onChange={(v) => setFormData({...formData, building: toTitleCase(v)})} type="select" options={['Admin', 'Plant Ops', 'Logistics']} />
-                  <InputGroup label="Department" placeholder="Ex: MIS DEPARTMENT" value={formData.department} onChange={(v) => setFormData({...formData, department: v.toUpperCase()})} />
-                  <InputGroup label="User Name" placeholder="Ex: Sample Name" value={formData.user_full_name} onChange={(v) => setFormData({...formData, user_full_name: toTitleCase(v)})} required />
+                  <InputGroup label="Building" value={formData.building} onChange={(v) => setFormData({...formData, building: v})} type="select" options={['Admin', 'Plant Ops', 'Logistics', 'Pier', 'Main Gate']} />
+                  <InputGroup label="Department" value={formData.department} onChange={(v) => setFormData({...formData, department: v.toUpperCase()})} type="select" options={['MIS', 'HR', 'FINANCE', 'PURCHASING', 'LOGISTICS', 'PLANT OPS', 'SECURITY']} />
+                  <InputGroup label="User Name" placeholder="Ex: Juan Dela Cruz" value={formData.user_full_name} onChange={(v) => setFormData({...formData, user_full_name: toTitleCase(v)})} required />
                   <InputGroup label="IP Address" placeholder="Ex: 192.168.1.1" value={formData.ip_address} onChange={(v) => setFormData({...formData, ip_address: v})} />
                   <InputGroup label="MAC Address" placeholder="Ex: 00-1A-2B-3C-4D-5E" value={formData.mac_address} onChange={(v) => setFormData({...formData, mac_address: v.toUpperCase()})} />
-                  <InputGroup label="OS Version" placeholder="Ex: Windows 11 Pro" value={formData.os_version} onChange={(v) => setFormData({...formData, os_version: toTitleCase(v)})} />
-                  <InputGroup label="MS Office" placeholder="Ex: Office 2021" value={formData.ms_office_version} onChange={(v) => setFormData({...formData, ms_office_version: toTitleCase(v)})} />
+                  <InputGroup label="OS Version" value={formData.os_version} onChange={(v) => setFormData({...formData, os_version: v})} type="select" options={['Windows 11 Pro', 'Windows 10 Pro', 'Windows 10 Home', 'Windows 7']} />
+                  <InputGroup label="MS Office" value={formData.ms_office_version} onChange={(v) => setFormData({...formData, ms_office_version: v})} type="select" options={['Office 2021', 'Office 2019', 'Office 2016', 'Office 2013', 'Office 365']} />
                   <InputGroup label="Kaspersky" value={formData.kaspersky} onChange={(v) => setFormData({...formData, kaspersky: v})} type="select" options={['Active', 'Not Active']} />
-                  <InputGroup label="Processor" placeholder="Ex: Intel Core I7" value={formData.processor} onChange={(v) => setFormData({...formData, processor: toTitleCase(v)})} />
-                  <InputGroup label="RAM" placeholder="Ex: 16GB DDR4" value={formData.ram} onChange={(v) => setFormData({...formData, ram: v.toUpperCase()})} />
-                  <InputGroup label="HDD" placeholder="Ex: 512GB SSD" value={formData.hard_drive} onChange={(v) => setFormData({...formData, hard_drive: v.toUpperCase()})} />
+                  <InputGroup label="Processor" value={formData.processor} onChange={(v) => setFormData({...formData, processor: v})} type="select" options={['Core i9', 'Core i7', 'Core i5', 'Core i3', 'Ryzen 9', 'Ryzen 7', 'Ryzen 5', 'Celeron', 'Pentium']} />
+                  <InputGroup label="RAM" value={formData.ram} onChange={(v) => setFormData({...formData, ram: v})} type="select" options={['4GB', '8GB', '16GB', '32GB', '64GB']} />
+                  <InputGroup label="Hard Drive" value={formData.hard_drive} onChange={(v) => setFormData({...formData, hard_drive: v})} type="select" options={['120GB SSD', '240GB SSD', '256GB SSD', '480GB SSD', '500GB SSD', '512GB SSD', '1TB SSD', '500GB HDD', '1TB HDD']} />
                 </>
               ) : (
                 <>
-                  {/* Fields para sa inventory_computer_parts table */}
-                  <InputGroup label="Item Name" placeholder="Ex: Mouse, Keyboard, Monitor" value={formData.item_name} onChange={(v) => setFormData({...formData, item_name: toTitleCase(v)})} required />
-                  <InputGroup label="Brand / Model" placeholder="Ex: Dell 24 inch" value={formData.brand_model} onChange={(v) => setFormData({...formData, brand_model: toTitleCase(v)})} />
-                  <InputGroup label="Serial Number" placeholder="Ex: SN-12345" value={formData.serial_number} onChange={(v) => setFormData({...formData, serial_number: v.toUpperCase()})} />
+                  <InputGroup label="Item Name" value={formData.item_name} onChange={(v) => setFormData({...formData, item_name: v})} type="select" options={['Monitor', 'Keyboard', 'Mouse', 'System Unit', 'RAM', 'SSD/HDD', 'AVR/UPS', 'Printer', 'Laptop', 'Router/Switch']} />
+                  <InputGroup label="Brand / Model" value={formData.brand_model} onChange={(v) => setFormData({...formData, brand_model: v})} type="select" options={['Dell', 'HP', 'Lenovo', 'Logitech', 'Asus', 'Acer', 'Samsung', 'TP-Link', 'Cisco', 'Epson', 'Canon']} />
                   <InputGroup label="Quantity" type="number" value={formData.quantity} onChange={(v) => setFormData({...formData, quantity: parseInt(v) || 0})} />
-                  <InputGroup label="Unit" value={formData.unit} onChange={(v) => setFormData({...formData, unit: toTitleCase(v)})} type="select" options={['Pcs', 'Set', 'Box', 'Unit']} />
-                  <InputGroup label="Status" value={formData.status} onChange={(v) => setFormData({...formData, status: v})} type="select" options={['New', 'Used', 'Defective']} />
-                  <InputGroup label="Location" placeholder="Ex: Storage Shelf A" value={formData.location} onChange={(v) => setFormData({...formData, location: toTitleCase(v)})} />
+                  <InputGroup label="Unit" value={formData.unit} onChange={(v) => setFormData({...formData, unit: v})} type="select" options={['Pcs', 'Set', 'Unit', 'Box']} />
+                  <InputGroup label="Status" value={formData.status} onChange={(v) => setFormData({...formData, status: v})} type="select" options={['New', 'Used', 'Unused', 'Defective']} />
+                  {formData.status === 'Used' && (
+                    <InputGroup label="Username" placeholder="Enter assigned user" value={formData.user_full_name} onChange={(v) => setFormData({...formData, user_full_name: toTitleCase(v)})} required />
+                  )}
+                  <InputGroup label="Location" value={formData.location} onChange={(v) => setFormData({...formData, location: v})} type="select" options={['MIS STORAGE', 'MIS OFFICE', 'CABINET A', 'CABINET B', 'PLANT STORAGE']} />
                 </>
               )}
             </div>
             <div className="px-6 py-4 border-t bg-slate-50 flex justify-end gap-3">
               <button type="button" onClick={() => setIsModalOpen(false)} className="text-[10px] font-bold text-slate-500 uppercase px-4 hover:text-slate-800 transition-colors">Cancel</button>
-              <button disabled={isSaving} type="submit" className={`px-10 py-2.5 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shadow-lg ${editingId ? 'bg-blue-600 shadow-blue-900/20' : 'bg-red-900 shadow-red-900/20'}`}>
-                {isSaving ? <Loader2 className="animate-spin" size={14} /> : (editingId ? "Update Record" : "Save Record")}
+              <button disabled={isSaving} type="submit" className={`px-10 py-2.5 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg ${editingId ? 'bg-blue-600 shadow-blue-900/20' : 'bg-red-900 shadow-red-900/20'}`}>
+                {isSaving ? <Loader2 className="animate-spin" size={14} /> : "Save Record"}
               </button>
             </div>
           </form>
@@ -402,7 +404,7 @@ export default function InventoryPage() {
   );
 }
 
-// --- SHARED COMPONENTS ---
+// Helpers
 function NavItem({ icon, label, active = false, onClick }: any) {
   return (
     <button onClick={onClick} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all text-xs font-medium group relative overflow-hidden ${active ? 'bg-red-50 text-red-900 font-bold border-l-4 border-red-900' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}>
@@ -413,13 +415,13 @@ function NavItem({ icon, label, active = false, onClick }: any) {
 
 function TabBtn({ label, icon, active, onClick }: any) {
   return (
-    <button onClick={onClick} className={`flex items-center gap-2 px-5 py-2 text-[10px] font-bold uppercase tracking-tight rounded-md transition-all ${active ? 'bg-red-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}>{icon} {label}</button>
+    <button onClick={onClick} className={`flex items-center gap-2 px-5 py-2 text-[10px] font-bold uppercase tracking-tight rounded-md transition-all ${active ? 'bg-red-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}>{icon} {label}</button>
   );
 }
 
 function InputGroup({ label, placeholder, value, onChange, required, type = 'text', options = [] }: InputGroupProps) {
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1.5 text-left">
       <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{label} {required && '*'}</label>
       {type === 'select' ? (
         <select value={value} onChange={e => onChange(e.target.value)} className="p-2.5 border border-slate-200 rounded-lg text-xs outline-none bg-white focus:ring-2 focus:ring-red-900/10 focus:border-red-900 transition-all shadow-sm">

@@ -89,7 +89,7 @@ export default function SummaryDashboard() {
             <div className="w-8 h-8 bg-red-900 rounded flex items-center justify-center shadow-md">
               <Server className="w-5 h-5 text-white" />
             </div>
-            <span className="text-lg font-bold tracking-tight text-red-900">MVC.MIS</span>
+            <span className="text-lg font-bold tracking-tight text-red-900">MVC.IS</span>
           </div>
         </div>
 
