@@ -5,16 +5,15 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { 
   LayoutDashboard, HardDrive, Server, Activity, Laptop, 
-  AlertTriangle, CheckCircle2, Clock, ShieldAlert, ArrowUpRight, 
-  Search, Bell, LogOut, Loader2
+  AlertTriangle, ShieldAlert, LogOut, Loader2, Menu, X 
 } from 'lucide-react';
 
 export default function SummaryDashboard() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile Nav State
   
-  // --- States para sa actual data ---
   const [stats, setStats] = useState({
     totalEquipment: 0,
     activePC: 0,
@@ -25,8 +24,6 @@ export default function SummaryDashboard() {
   useEffect(() => {
     const getData = async () => {
       setLoading(true);
-      
-      // 1. Get User Session
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.push('/');
@@ -36,19 +33,16 @@ export default function SummaryDashboard() {
       setUser(currentUser);
 
       try {
-        // 2. Fetch Personal Computer Count (Only yours)
         const { count: pcCount, data: pcData } = await supabase
           .from('inventory_pc')
           .select('*', { count: 'exact' })
           .eq('user_id', currentUser.id);
 
-        // 3. Fetch Computer Parts Count (Only yours)
         const { count: partsCount } = await supabase
           .from('inventory_computer_parts')
           .select('*', { count: 'exact' })
           .eq('user_id', currentUser.id);
 
-        // 4. Filter Alerts (Example: Kaspersky Not Active)
         const expiredKaspersky = pcData?.filter(pc => 
           pc.kaspersky?.toLowerCase().includes('not active')
         ) || [];
@@ -59,7 +53,6 @@ export default function SummaryDashboard() {
           partsInStorage: partsCount || 0,
           alerts: expiredKaspersky
         });
-
       } catch (error) {
         console.error("Error connecting inventory:", error);
       } finally {
@@ -80,17 +73,32 @@ export default function SummaryDashboard() {
   const initials = displayName.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2);
 
   return (
-    <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">
+    <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden relative">
       
+      {/* --- MOBILE OVERLAY --- */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 z-30 lg:hidden backdrop-blur-sm"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* --- SIDEBAR --- */}
-      <aside className="w-64 border-r border-slate-200 bg-white flex flex-col shrink-0 z-20 shadow-sm">
-        <div className="h-16 flex items-center px-6 border-b border-slate-100">
+      <aside className={`
+        fixed inset-y-0 left-0 z-40 w-64 border-r border-slate-200 bg-white flex flex-col shrink-0 transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0
+        ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
+      `}>
+        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-red-900 rounded flex items-center justify-center shadow-md">
               <Server className="w-5 h-5 text-white" />
             </div>
             <span className="text-lg font-bold tracking-tight text-red-900">MVC.IS</span>
           </div>
+          {/* Close button for mobile */}
+          <button className="lg:hidden text-slate-400 p-1" onClick={() => setIsSidebarOpen(false)}>
+            <X size={20} />
+          </button>
         </div>
 
         <nav className="flex-1 p-4 space-y-1">
@@ -113,25 +121,32 @@ export default function SummaryDashboard() {
       </aside>
 
       {/* --- MAIN CONTENT --- */}
-      <main className="flex-1 flex flex-col min-w-0 bg-slate-50/50">
+      <main className="flex-1 flex flex-col min-w-0 bg-slate-50/50 w-full">
         <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-6 shrink-0 z-10 sticky top-0">
           <div className="flex items-center gap-4">
-            <h1 className="text-lg font-bold text-slate-800 tracking-tight">System Summary</h1>
-            <span className="h-4 w-px bg-slate-200"></span>
-            <span className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
+            {/* HAMBURGER TOGGLE */}
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 -ml-2 rounded-md lg:hidden hover:bg-slate-100 text-slate-600"
+            >
+              <Menu size={20} />
+            </button>
+            
+            <h1 className="text-sm md:text-lg font-bold text-slate-800 tracking-tight">System Summary</h1>
+            <span className="h-4 w-px bg-slate-200 hidden sm:block"></span>
+            <span className="hidden sm:flex text-xs text-slate-500 font-medium items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               Live Data
             </span>
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto p-6 md:p-8 space-y-6 custom-scrollbar">
+        <div className="flex-1 overflow-auto p-4 md:p-8 space-y-6 custom-scrollbar">
           {loading ? (
             <div className="h-64 flex items-center justify-center"><Loader2 className="animate-spin text-red-900" size={32}/></div>
           ) : (
             <>
-              {/* KPI Cards Connected to Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <KpiCard title="Total Assets" value={stats.totalEquipment} trend="Personal items tracked" icon={<HardDrive size={20} />} color="blue" />
                 <KpiCard title="Personal Computers" value={stats.activePC} trend="Currently Deployed" icon={<Laptop size={20} />} color="emerald" />
                 <KpiCard title="Parts in Storage" value={stats.partsInStorage} trend="In MIS Office" icon={<Activity size={20} />} color="amber" />
@@ -139,7 +154,6 @@ export default function SummaryDashboard() {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Distribution Bar */}
                 <div className="lg:col-span-2 bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
                     <h3 className="font-bold text-slate-800 mb-6">Inventory Breakdown</h3>
                     <div className="space-y-5">
@@ -148,7 +162,6 @@ export default function SummaryDashboard() {
                     </div>
                 </div>
 
-                {/* Action Center - Real Alerts */}
                 <div className="lg:col-span-1 bg-white border border-red-200 rounded-lg overflow-hidden shadow-sm">
                     <div className="bg-red-50 border-b border-red-100 p-4 flex items-center gap-2">
                       <ShieldAlert size={18} className="text-red-700" />
@@ -171,7 +184,7 @@ export default function SummaryDashboard() {
   );
 }
 
-// --- KPI & Helper Components (Parehas ra sa imong style) ---
+// --- HELPER COMPONENTS REMAIN THE SAME ---
 function NavItem({ icon, label, active = false, onClick }: any) {
   return (
     <button onClick={onClick} className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-all text-xs font-medium relative ${active ? 'bg-red-50 text-red-900 font-bold border-l-4 border-red-900' : 'text-slate-500 hover:bg-slate-50'}`}>

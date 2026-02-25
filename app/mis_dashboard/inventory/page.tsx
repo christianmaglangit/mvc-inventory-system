@@ -4,16 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { 
-  LayoutDashboard, Search, Bell, Server, HardDrive,
-  Plus, Laptop, Cpu, FileText, Cable, X, LogOut, 
-  Edit, Trash2, Loader2, Download 
+  LayoutDashboard, Search, Server, HardDrive,
+  Plus, X, LogOut, Edit, Trash2, Loader2, Download, Menu 
 } from 'lucide-react';
 
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Swal from 'sweetalert2'; 
 
-// --- Interfaces ---
+// --- Interfaces remain unchanged ---
 interface InventoryItem {
   id: string;
   user_id: string; 
@@ -53,6 +52,7 @@ export default function InventoryPage() {
   const [activeCategory, setActiveCategory] = useState('Personal Computer');
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile Sidebar State
   const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [inventoryList, setInventoryList] = useState<InventoryItem[]>([]);
@@ -69,6 +69,7 @@ export default function InventoryPage() {
   const [formData, setFormData] = useState(initialForm);
   const router = useRouter();
 
+  // --- Functions (fetchData, handleSave, etc.) remain exactly as you wrote them ---
   const toTitleCase = (str: string) => {
     if (!str) return "";
     return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
@@ -225,15 +226,30 @@ export default function InventoryPage() {
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden relative text-[11px]">
       
+      {/* --- MOBILE OVERLAY --- */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 z-30 lg:hidden backdrop-blur-sm"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* --- SIDEBAR --- */}
-      <aside className="w-64 border-r border-slate-200 bg-white flex flex-col shrink-0 z-20 shadow-sm">
-        <div className="h-16 flex items-center px-6 border-b border-slate-100">
+      <aside className={`
+        fixed inset-y-0 left-0 z-40 w-64 border-r border-slate-200 bg-white flex flex-col shrink-0 transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0
+        ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
+      `}>
+        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-red-900 rounded flex items-center justify-center shadow-md">
               <Server className="w-5 h-5 text-white" />
             </div>
             <span className="text-lg font-bold tracking-tight text-red-900">MVC.IS</span>
           </div>
+          {/* Close button for mobile */}
+          <button className="lg:hidden text-slate-400 p-1" onClick={() => setIsSidebarOpen(false)}>
+            <X size={20} />
+          </button>
         </div>
 
         <nav className="flex-1 p-4 space-y-1">
@@ -241,48 +257,56 @@ export default function InventoryPage() {
           <NavItem icon={<HardDrive size={18} />} label="Inventory Data" active={true} />
         </nav>
 
-        {/* --- LOGOUT & PROFILE --- */}
         <div className="p-4 border-t border-slate-100 space-y-2">
-           <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all text-xs font-bold text-slate-500 hover:text-red-900 hover:bg-red-50 group border border-transparent hover:border-red-100">
+           <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all text-xs font-bold text-slate-500 hover:text-red-900 hover:bg-red-50 group border border-transparent">
              <LogOut size={18} className="group-hover:rotate-12 transition-transform" />
              <span>Sign Out</span>
            </button>
-           
            <div className="flex items-center gap-3 px-3 py-3 rounded-lg bg-slate-50 border border-slate-200">
-             <div className="w-8 h-8 rounded bg-red-100 flex items-center justify-center font-black text-red-800 text-[10px] border border-red-200 shrink-0">
-               {initials}
-             </div>
+             <div className="w-8 h-8 rounded bg-red-100 flex items-center justify-center font-black text-red-800 text-[10px] shrink-0">{initials}</div>
              <div className="flex-1 min-w-0">
-               <p className="text-xs font-bold text-slate-900 truncate">{displayName}</p>
-               <p className="text-[10px] text-slate-500 truncate font-medium">{displayDept}</p>
+               <p className="text-xs font-bold truncate">{displayName}</p>
+               <p className="text-[10px] text-slate-500 truncate">{displayDept}</p>
              </div>
            </div>
         </div>
       </aside>
 
+      {/* --- MAIN CONTENT --- */}
       <main className="flex-1 flex flex-col min-w-0">
         <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-6 shrink-0 z-10 sticky top-0">
-          <h1 className="text-lg font-bold tracking-tight">Inventory Management</h1>
-          <div className="relative group">
+          <div className="flex items-center gap-3">
+            {/* MOBILE MENU TOGGLE */}
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 -ml-2 rounded-md lg:hidden hover:bg-slate-100 text-slate-600"
+            >
+              <Menu size={20} />
+            </button>
+            <h1 className="text-sm md:text-lg font-bold tracking-tight">Inventory Management</h1>
+          </div>
+
+          <div className="relative group hidden sm:block">
             <Search className="absolute left-3 top-2.5 text-slate-400 group-focus-within:text-red-900" size={16} />
-            <input type="text" placeholder="Search my records..." className="bg-slate-100 border border-slate-200 rounded-md py-2 pl-9 pr-4 text-xs w-64 focus:outline-none focus:bg-white transition-all shadow-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <input type="text" placeholder="Search my records..." className="bg-slate-100 border border-slate-200 rounded-md py-2 pl-9 pr-4 text-xs w-48 md:w-64 focus:outline-none focus:bg-white transition-all shadow-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto p-6 md:p-8 space-y-6 custom-scrollbar">
-          <div className="flex bg-white border border-slate-200 rounded-lg p-1.5 shadow-sm w-fit gap-1">
-            <TabBtn label="Personal Computer" active={activeCategory === 'Personal Computer'} onClick={() => setActiveCategory('Personal Computer')} />
-            <TabBtn label="Computer Parts" active={activeCategory === 'Computer Parts'} onClick={() => setActiveCategory('Computer Parts')} />
-          </div>
+        <div className="flex-1 overflow-auto p-4 md:p-8 space-y-6 custom-scrollbar">
+          {/* CATEGORY TABS - Responsiveness */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex bg-white border border-slate-200 rounded-lg p-1.5 shadow-sm w-fit gap-1">
+              <TabBtn label="Personal Computer" active={activeCategory === 'Personal Computer'} onClick={() => setActiveCategory('Personal Computer')} />
+              <TabBtn label="Computer Parts" active={activeCategory === 'Computer Parts'} onClick={() => setActiveCategory('Computer Parts')} />
+            </div>
 
-          <div className="flex justify-between items-center">
-            <h2 className="font-bold text-slate-800 text-[14px]">{activeCategory} List</h2>
-            <div className="flex gap-2">
-              <button onClick={handleExportPDF} className="flex items-center border border-slate-200 gap-2 px-4 py-2 bg-white text-xs font-bold rounded-lg hover:bg-slate-50 transition-all shadow-sm"><Download size={16} /> PDF Report</button>
-              <button onClick={() => { setEditingId(null); setFormData(initialForm); setIsModalOpen(true); }} className="flex items-center gap-2 px-4 py-2 bg-red-900 text-white text-xs font-bold rounded-lg shadow-md active:scale-95 transition-all"><Plus size={16} /> Add Record</button>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button onClick={handleExportPDF} className="flex-1 sm:flex-none flex items-center justify-center border border-slate-200 gap-2 px-4 py-2 bg-white text-[10px] font-bold rounded-lg hover:bg-slate-50 transition-all shadow-sm"><Download size={14} /> PDF</button>
+              <button onClick={() => { setEditingId(null); setFormData(initialForm); setIsModalOpen(true); }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-red-900 text-white text-[10px] font-bold rounded-lg shadow-md active:scale-95 transition-all"><Plus size={14} /> Add Record</button>
             </div>
           </div>
 
+          {/* TABLE CONTAINER */}
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
             <div className="overflow-x-auto custom-scrollbar">
               <table className="w-full text-left text-slate-600 whitespace-nowrap min-w-max border-collapse">
@@ -347,15 +371,15 @@ export default function InventoryPage() {
         </div>
       </main>
 
-      {/* MODAL */}
+      {/* MODAL - Adjusted for Mobile Scrolling */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all text-[11px]">
-          <form onSubmit={handleSaveRecord} className="bg-white rounded-xl shadow-2xl w-full max-w-4xl border border-slate-200 overflow-hidden text-left">
-            <div className="px-6 py-4 border-b bg-slate-50 flex justify-between items-center font-bold text-slate-800 uppercase tracking-widest">
-               <h2 className="text-sm">{editingId ? 'Edit' : 'New'} Record ({activeCategory})</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-sm transition-all text-[11px]">
+          <form onSubmit={handleSaveRecord} className="bg-white rounded-xl shadow-2xl w-full max-w-4xl border border-slate-200 overflow-hidden text-left flex flex-col max-h-[95vh]">
+            <div className="px-6 py-4 border-b bg-slate-50 flex justify-between items-center font-bold text-slate-800 uppercase tracking-widest shrink-0">
+               <h2 className="text-xs sm:text-sm">{editingId ? 'Edit' : 'New'} Record ({activeCategory})</h2>
                <button type="button" onClick={() => setIsModalOpen(false)}><X size={20} /></button>
             </div>
-            <div className="p-8 grid grid-cols-3 gap-6 overflow-y-auto max-h-[70vh]">
+            <div className="p-4 sm:p-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 overflow-y-auto">
               {activeCategory === 'Personal Computer' ? (
                 <>
                   <InputGroup label="Building" value={formData.building} onChange={(v) => setFormData({...formData, building: v})} type="select" options={['Admin', 'Plant Ops', 'Logistics', 'Pier', 'Main Gate']} />
@@ -384,7 +408,7 @@ export default function InventoryPage() {
                 </>
               )}
             </div>
-            <div className="px-6 py-4 border-t bg-slate-50 flex justify-end gap-3">
+            <div className="px-6 py-4 border-t bg-slate-50 flex justify-end gap-3 shrink-0">
               <button type="button" onClick={() => setIsModalOpen(false)} className="text-[10px] font-bold text-slate-500 uppercase px-4 hover:text-slate-800 transition-colors">Cancel</button>
               <button disabled={isSaving} type="submit" className={`px-10 py-2.5 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg ${editingId ? 'bg-blue-600 shadow-blue-900/20' : 'bg-red-900 shadow-red-900/20'}`}>
                 {isSaving ? <Loader2 className="animate-spin" size={14} /> : "Save Record"}
@@ -394,6 +418,7 @@ export default function InventoryPage() {
         </div>
       )}
 
+      {/* CSS remains same */}
       <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar::-webkit-scrollbar { height: 12px; width: 12px; } 
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
@@ -404,7 +429,7 @@ export default function InventoryPage() {
   );
 }
 
-// Helpers
+// Helpers (Same as previous but NavItem improved for clicking/closing mobile nav)
 function NavItem({ icon, label, active = false, onClick }: any) {
   return (
     <button onClick={onClick} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all text-xs font-medium group relative overflow-hidden ${active ? 'bg-red-50 text-red-900 font-bold border-l-4 border-red-900' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}>
@@ -415,7 +440,7 @@ function NavItem({ icon, label, active = false, onClick }: any) {
 
 function TabBtn({ label, icon, active, onClick }: any) {
   return (
-    <button onClick={onClick} className={`flex items-center gap-2 px-5 py-2 text-[10px] font-bold uppercase tracking-tight rounded-md transition-all ${active ? 'bg-red-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}>{icon} {label}</button>
+    <button onClick={onClick} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-5 py-2 text-[9px] sm:text-[10px] font-bold uppercase tracking-tight rounded-md transition-all ${active ? 'bg-red-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}>{icon} {label}</button>
   );
 }
 

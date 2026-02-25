@@ -133,7 +133,7 @@ function LoginPage({ onSignUpClick, onForgotClick }: { onSignUpClick: () => void
               required 
               onChange={(e) => { setEmail(e.target.value); setNotification(null); }} 
               className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-red-700/10 focus:border-red-700 transition-all placeholder:text-slate-400 text-sm" 
-              placeholder="name@mvc.com.ph" 
+              placeholder="name@gmail.com" 
             />
           </div>
 
@@ -208,15 +208,6 @@ function SignUpPage({ onSignInClick, onSignUpSuccess }: { onSignInClick: () => v
           } 
         }
       });
-      if (error) {
-        setNotification({ type: 'error', message: error.message });
-        setAuthLoading(false);
-      } else { 
-        setNotification({ type: 'success', message: 'Verification email sent! Please check your inbox.' });
-        setTimeout(() => {
-          onSignUpSuccess();
-        }, 3000);
-      }
     } catch (err) {
       setNotification({ type: 'error', message: 'An unexpected error occurred during registration.' });
       setAuthLoading(false);
@@ -253,7 +244,18 @@ function SignUpPage({ onSignInClick, onSignUpSuccess }: { onSignInClick: () => v
 
           <div className="space-y-1">
             <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest">Full Name</label>
-            <input placeholder="Juan Dela Cruz" required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:border-red-800 text-sm" onChange={e => { setFormData({...formData, fullName: e.target.value}); setNotification(null); }} />
+            <input 
+              placeholder="Juan Dela Cruz" 
+              required 
+              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:border-red-800 text-sm" 
+              value={formData.fullName} // <-- Added value prop to control the input
+              onChange={e => { 
+                // Auto-capitalize the first letter of each word
+                const formattedName = e.target.value.replace(/\b\w/g, char => char.toUpperCase());
+                setFormData({...formData, fullName: formattedName}); 
+                setNotification(null); 
+              }} 
+            />
           </div>
 
           <div className="space-y-1">
@@ -268,7 +270,7 @@ function SignUpPage({ onSignInClick, onSignUpSuccess }: { onSignInClick: () => v
 
           <div className="space-y-1">
             <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest">Email</label>
-            <input type="email" placeholder="name@mvc.com.ph" required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:border-red-800 text-sm" onChange={e => { setFormData({...formData, email: e.target.value}); setNotification(null); }} />
+            <input type="email" placeholder="name@gmail.com" required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:border-red-800 text-sm" onChange={e => { setFormData({...formData, email: e.target.value}); setNotification(null); }} />
           </div>
 
           <div className="space-y-1 relative">
@@ -367,7 +369,7 @@ function ForgotPasswordPage({ onBackToLogin }: { onBackToLogin: () => void }) {
               required 
               onChange={(e) => { setEmail(e.target.value); setNotification(null); }} 
               className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-red-700/10 focus:border-red-700 transition-all placeholder:text-slate-400 text-sm" 
-              placeholder="name@mvc.com.ph" 
+              placeholder="name@gmail.com" 
             />
           </div>
 

@@ -6,13 +6,14 @@ import { supabase } from '@/lib/supabase';
 import { 
   LayoutDashboard, Users, UserPlus, FileBadge, Calendar, 
   Search, Bell, LogOut, ArrowUpRight, TrendingUp,
-  Briefcase, ShieldAlert
+  Briefcase, Menu, X
 } from 'lucide-react';
 
 export default function HRDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [user, setUser] = useState<any>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile Menu State
 
   useEffect(() => {
     const getUser = async () => {
@@ -34,17 +35,32 @@ export default function HRDashboard() {
   const initials = displayName.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2);
 
   return (
-    <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden selection:bg-red-900 selection:text-white">
+    <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden selection:bg-red-900 selection:text-white relative">
       
-      {/* --- SIDEBAR (UNIFIED) --- */}
-      <aside className="w-64 border-r border-slate-200 bg-white flex flex-col shrink-0 z-20 shadow-sm">
-        <div className="h-16 flex items-center px-6 border-b border-slate-100">
+      {/* --- MOBILE OVERLAY --- */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 z-30 lg:hidden backdrop-blur-sm transition-opacity"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* --- SIDEBAR (RESPONSIVE) --- */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-40 w-64 border-r border-slate-200 bg-white flex flex-col shrink-0 transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0
+        ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
+      `}>
+        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-red-900 rounded flex items-center justify-center shadow-md">
               <Users className="w-5 h-5 text-white" />
             </div>
             <span className="text-lg font-bold tracking-tight text-red-900">MVC<span className="text-slate-400 font-normal">.HR</span></span>
           </div>
+          {/* Close for mobile */}
+          <button className="lg:hidden text-slate-400 hover:text-red-900 transition-colors" onClick={() => setIsSidebarOpen(false)}>
+            <X size={20} />
+          </button>
         </div>
 
         <nav className="flex-1 p-4 space-y-1">
@@ -52,19 +68,19 @@ export default function HRDashboard() {
             icon={<LayoutDashboard size={18} />} 
             label="HR Overview" 
             active={activeTab === 'Dashboard'} 
-            onClick={() => setActiveTab('Dashboard')} 
+            onClick={() => { setActiveTab('Dashboard'); setIsSidebarOpen(false); }} 
           />
           <NavItem 
             icon={<Users size={18} />} 
             label="Employee Directory" 
             active={activeTab === 'Directory'} 
-            onClick={() => router.push('/hr_dashboard/employee_directory')} // CONNECTED HERE
+            onClick={() => router.push('/hr_dashboard/employee_directory')}
           />
           <NavItem 
             icon={<Calendar size={18} />} 
             label="Attendance & Leaves" 
             active={activeTab === 'Attendance'} 
-            onClick={() => setActiveTab('Attendance')} 
+            onClick={() => { setActiveTab('Attendance'); setIsSidebarOpen(false); }} 
           />
         </nav>
 
@@ -93,9 +109,17 @@ export default function HRDashboard() {
       <main className="flex-1 flex flex-col min-w-0 bg-slate-50/50">
         <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-6 shrink-0 z-10 sticky top-0">
           <div className="flex items-center gap-4">
-            <h1 className="text-lg font-bold text-slate-800 tracking-tight">HR Dashboard</h1>
-            <span className="h-4 w-px bg-slate-200"></span>
-            <span className="text-xs text-slate-500 font-medium">Iligan Plant Operations</span>
+            {/* HAMBURGER BUTTON */}
+            <button 
+              className="lg:hidden p-2 -ml-2 text-slate-600 hover:text-red-900 hover:bg-slate-50 rounded-md transition-all"
+              onClick={() => setIsSidebarOpen(true)}
+            >
+              <Menu size={20} />
+            </button>
+
+            <h1 className="text-sm md:text-lg font-bold text-slate-800 tracking-tight">HR Dashboard</h1>
+            <span className="h-4 w-px bg-slate-200 hidden sm:block"></span>
+            <span className="text-xs text-slate-500 font-medium hidden sm:block">Iligan Plant Operations</span>
           </div>
           <div className="flex items-center gap-3">
              <button className="p-2 text-slate-500 hover:text-red-900 transition-colors relative">
@@ -105,9 +129,9 @@ export default function HRDashboard() {
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto p-6 md:p-8 space-y-6 custom-scrollbar">
+        <div className="flex-1 overflow-auto p-4 md:p-8 space-y-6 custom-scrollbar">
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <KpiCard title="Total Employees" value="342" trend="+4 this month" icon={<Users size={20} />} color="blue" />
             <KpiCard title="On Leave" value="12" trend="8 Vacation / 4 Sick" icon={<Calendar size={20} />} color="amber" />
             <KpiCard title="New Hires" value="5" trend="Onboarding Phase" icon={<UserPlus size={20} />} color="emerald" />
@@ -162,17 +186,16 @@ export default function HRDashboard() {
               <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm">
                 <h3 className="font-bold text-slate-800 mb-4">Quick Actions</h3>
                 <div className="grid grid-cols-2 gap-3">
-                   {/* CONNECTED TO DIRECTORY HERE */}
                    <button 
                     onClick={() => router.push('/hr_dashboard/employee_directory')}
                     className="p-3 border border-slate-200 rounded-lg hover:border-red-900 hover:bg-red-50 transition-all flex flex-col items-center gap-2 group text-center"
                    >
-                      <UserPlus className="text-slate-400 group-hover:text-red-900" size={20} />
-                      <span className="text-[10px] font-bold uppercase">View Directory</span>
+                     <UserPlus className="text-slate-400 group-hover:text-red-900" size={20} />
+                     <span className="text-[10px] font-bold uppercase">View Directory</span>
                    </button>
                    <button className="p-3 border border-slate-200 rounded-lg hover:border-red-900 hover:bg-red-50 transition-all flex flex-col items-center gap-2 group text-center">
-                      <FileBadge className="text-slate-400 group-hover:text-red-900" size={20} />
-                      <span className="text-[10px] font-bold uppercase">Gen. Report</span>
+                     <FileBadge className="text-slate-400 group-hover:text-red-900" size={20} />
+                     <span className="text-[10px] font-bold uppercase">Gen. Report</span>
                    </button>
                 </div>
               </div>
@@ -206,8 +229,7 @@ export default function HRDashboard() {
   );
 }
 
-// --- HELPER COMPONENTS ---
-
+// --- HELPER COMPONENTS (UNCHANGED) ---
 function NavItem({ icon, label, active = false, onClick }: any) {
   return (
     <button onClick={onClick} className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-all text-xs font-medium group relative overflow-hidden ${active ? 'bg-red-50 text-red-900 font-bold' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}>
