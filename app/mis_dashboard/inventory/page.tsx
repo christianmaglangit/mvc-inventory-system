@@ -184,8 +184,10 @@ export default function InventoryPage() {
     const doc = new jsPDF({ orientation: 'landscape' });
     doc.setFontSize(18);
     doc.text("MABUHAY VINYL CORPORATION", 14, 15);
+    doc.setFontSize(12);
+    doc.text("Department: IT", 14, 22);
     doc.setFontSize(10);
-    doc.text(`Inventory Report: ${activeCategory}`, 14, 22);
+    doc.text(`Inventory Report: ${activeCategory}`, 14, 28);
 
     const tableColumn = activeCategory === 'Personal Computer' 
       ? ["Building", "Dept", "User", "IP Address", "MAC", "OS", "Office", "Kaspersky", "CPU", "RAM", "HDD"]
