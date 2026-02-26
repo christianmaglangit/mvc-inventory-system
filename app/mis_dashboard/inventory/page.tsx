@@ -45,6 +45,7 @@ interface InputGroupProps {
   required?: boolean;
   type?: 'text' | 'select' | 'number';
   options?: string[];
+  maxLength?: number;
 }
 
 export default function InventoryPage() {
@@ -67,6 +68,28 @@ export default function InventoryPage() {
 
   const [formData, setFormData] = useState(initialForm);
   const router = useRouter();
+
+  // --- AUTOMATIC FORMATTERS ---
+  const formatIP = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    const char = { 3: '.', 6: '.', 9: '.' };
+    let masked = '';
+    for (let i = 0; i < numbers.length; i++) {
+      // @ts-ignore
+      masked += (char[i] || '') + numbers[i];
+    }
+    return masked.substring(0, 15);
+  };
+
+  const formatMAC = (value: string) => {
+    const hex = value.replace(/[^0-9A-Fa-f]/g, '').toUpperCase();
+    let masked = '';
+    for (let i = 0; i < hex.length; i++) {
+      if (i > 0 && i % 2 === 0) masked += '-';
+      masked += hex[i];
+    }
+    return masked.substring(0, 17);
+  };
 
   const toTitleCase = (str: string) => {
     if (!str) return "";
@@ -224,12 +247,10 @@ export default function InventoryPage() {
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden relative text-[11px]">
       
-      {/* --- MOBILE OVERLAY --- */}
       {isSidebarOpen && (
         <div className="fixed inset-0 bg-slate-900/50 z-30 lg:hidden backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />
       )}
 
-      {/* --- SIDEBAR --- */}
       <aside className={`fixed inset-y-0 left-0 z-40 w-64 border-r border-slate-200 bg-white flex flex-col shrink-0 transition-transform duration-300 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}>
         <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100">
           <div className="flex items-center gap-3">
@@ -261,7 +282,6 @@ export default function InventoryPage() {
         </div>
       </aside>
 
-      {/* --- MAIN CONTENT --- */}
       <main className="flex-1 flex flex-col min-w-0">
         <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-6 shrink-0 z-10 sticky top-0">
           <div className="flex items-center gap-3">
@@ -362,17 +382,65 @@ export default function InventoryPage() {
             <div className="p-4 sm:p-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 overflow-y-auto">
               {activeCategory === 'Personal Computer' ? (
                 <>
-                  <InputGroup label="Building" value={formData.building} onChange={(v) => setFormData({...formData, building: v})} type="select" options={['Admin', 'IEM 1', 'QC']} />
-                  <InputGroup label="Department" value={formData.department} onChange={(v) => setFormData({...formData, department: v.toUpperCase()})} type="select" options={['MIS', 'HR', 'MARKETING', 'FINANCE', 'SECURITY' ]} />
+                  <InputGroup label="Building" value={formData.building} onChange={(v) => setFormData({...formData, building: v})} type="select" options={['Admin', 'IEM 1', 'QC', 'CONTRACTOR',]} />
+                  <InputGroup label="Department" value={formData.department} onChange={(v) => setFormData({...formData, department: v.toUpperCase()})} type="select" options={['MIS', 'HR', 'MARKETING', 'FINANCE', 'SECURITY', 'IEM 1', 'QC', 'CONTRACTOR', ]} />
                   <InputGroup label="User Name" placeholder="Ex: Juan Dela Cruz" value={formData.user_full_name} onChange={(v) => setFormData({...formData, user_full_name: toTitleCase(v)})} required />
-                  <InputGroup label="IP Address" placeholder="Ex: 192.168.1.1" value={formData.ip_address} onChange={(v) => setFormData({...formData, ip_address: v})} />
-                  <InputGroup label="MAC Address" placeholder="Ex: 00-1A-2B-3C-4D-5E" value={formData.mac_address} onChange={(v) => setFormData({...formData, mac_address: v.toUpperCase()})} />
-                  <InputGroup label="OS Version" value={formData.os_version} onChange={(v) => setFormData({...formData, os_version: v})} type="select" options={['Windows 11 Pro', 'Windows 10 Pro', 'Windows 10 Home', 'Windows 7']} />
-                  <InputGroup label="MS Office" value={formData.ms_office_version} onChange={(v) => setFormData({...formData, ms_office_version: v})} type="select" options={['Office 2021', 'Office 2019', 'Office 2016', 'Office 2013', 'Office 365']} />
+                  
+                  <InputGroup 
+                    label="IP Address" 
+                    placeholder="192.168.1.1" 
+                    value={formData.ip_address} 
+                    onChange={(v) => setFormData({...formData, ip_address: formatIP(v)})} 
+                    maxLength={15}
+                  />
+                  
+                  <InputGroup 
+                    label="MAC Address" 
+                    placeholder="00-1A-2B-3C-4D-5E" 
+                    value={formData.mac_address} 
+                    onChange={(v) => setFormData({...formData, mac_address: formatMAC(v)})} 
+                    maxLength={17}
+                  />
+                  
+                  {/* COMPREHENSIVE OS VERSION LIST */}
+                  <InputGroup 
+                    label="OS Version" 
+                    value={formData.os_version} 
+                    onChange={(v) => setFormData({...formData, os_version: v})} 
+                    type="select" 
+                    options={[
+                      'Windows 11 Pro', 'Windows 11 Home', 'Windows 11 Enterprise',
+                      'Windows 10 Pro', 'Windows 10 Home', 'Windows 10 Enterprise',
+                      'Windows 8.1 Pro', 'Windows 7 Pro', 'Windows XP',
+                      'Windows Server 2022', 'Windows Server 2019', 'Windows Server 2016',
+                      'macOS Sonoma', 'macOS Ventura', 'Ubuntu Desktop', 'Ubuntu Server', 'Debian', 'CentOS'
+                    ]} 
+                  />
+
+                  <InputGroup label="MS Office" value={formData.ms_office_version} onChange={(v) => setFormData({...formData, ms_office_version: v})} type="select" options={[
+                    'Office 2024 Pro Plus',
+                    'Office 2021 Pro Plus', 
+                    'Office 2019 Pro Plus', 
+                    'Office 2016 Pro Plus', 
+                    'Office 2013 Pro Plus', 
+                    'Office 2010 Pro Plus', 
+                    'Office 2019 Home & Business',
+                    'Office 2016 Home & Business',
+                    'Office 2010 Home & Business',
+                    'Office for Mac',
+                    'None / Not Installed'
+                  ]} />
                   <InputGroup label="Kaspersky" value={formData.kaspersky} onChange={(v) => setFormData({...formData, kaspersky: v})} type="select" options={['Active', 'Not Active']} />
-                  <InputGroup label="Processor" value={formData.processor} onChange={(v) => setFormData({...formData, processor: v})} type="select" options={['Core i9', 'Core i7', 'Core i5', 'Core i3', 'Ryzen 9', 'Ryzen 7', 'Ryzen 5', 'Celeron', 'Pentium']} />
-                  <InputGroup label="RAM" value={formData.ram} onChange={(v) => setFormData({...formData, ram: v})} type="select" options={['4GB', '8GB', '16GB', '32GB', '64GB']} />
-                  <InputGroup label="Hard Drive" value={formData.hard_drive} onChange={(v) => setFormData({...formData, hard_drive: v})} type="select" options={['120GB SSD', '240GB SSD', '256GB SSD', '480GB SSD', '500GB SSD', '512GB SSD', '1TB SSD', '500GB HDD', '1TB HDD']} />
+                  <InputGroup label="Processor" value={formData.processor} onChange={(v) => setFormData({...formData, processor: v})} type="select" options={[
+                    'Core i9 14th Gen', 'Core i9 13th Gen', 'Core i9 12th Gen',
+                    'Core i7 14th Gen', 'Core i7 13th Gen', 'Core i7 12th Gen', 'Core i7 11th Gen', 'Core i7 10th Gen',
+                    'Core i5 14th Gen', 'Core i5 13th Gen', 'Core i5 12th Gen', 'Core i5 11th Gen', 'Core i5 10th Gen', 'Core i5 9th Gen', 'Core i5 8th Gen',
+                    'Core i3 14th Gen', 'Core i3 13th Gen', 'Core i3 12th Gen', 'Core i3 10th Gen', 'Core i3 9th Gen', 'Core i3 8th Gen',
+                    'Ryzen 9 7000 Series', 'Ryzen 7 7000 Series', 'Ryzen 5 7000 Series', 'Ryzen 5 5000 Series', 'Ryzen 3 5000 Series',
+                    'Pentium Gold', 'Celeron N-Series', 'Apple M1', 'Apple M2', 'Apple M3', 'Xeon (Server)'
+                  ]} />
+                  <InputGroup label="RAM" value={formData.ram} onChange={(v) => setFormData({...formData, ram: v})} type="select" options={['4GB', '8GB', '16GB', '32GB', '64GB', '128GB']} />
+                  <InputGroup label="Hard Drive" value={formData.hard_drive} onChange={(v) => setFormData({...formData, hard_drive: v})} type="select" options={['120GB SSD', '240GB SSD', '256GB SSD', '480GB SSD', '500GB SSD', '1TB SSD', '500GB HDD', '1TB HDD']} />
                 </>
               ) : (
                 <>
@@ -426,7 +494,7 @@ function TabBtn({ label, icon, active, onClick }: any) {
   );
 }
 
-function InputGroup({ label, placeholder, value, onChange, required, type = 'text', options = [] }: InputGroupProps) {
+function InputGroup({ label, placeholder, value, onChange, required, type = 'text', options = [], maxLength }: InputGroupProps) {
   return (
     <div className="flex flex-col gap-1.5 text-left">
       <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{label} {required && '*'}</label>
@@ -435,7 +503,15 @@ function InputGroup({ label, placeholder, value, onChange, required, type = 'tex
           {options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
         </select>
       ) : (
-        <input type={type} required={required} placeholder={placeholder} value={value} onChange={e => onChange(e.target.value)} className="p-2.5 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-red-900/10 focus:border-red-900 transition-all shadow-sm" />
+        <input 
+          type={type} 
+          required={required} 
+          placeholder={placeholder} 
+          value={value} 
+          onChange={e => onChange(e.target.value)} 
+          maxLength={maxLength}
+          className="p-2.5 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-red-900/10 focus:border-red-900 transition-all shadow-sm" 
+        />
       )}
     </div>
   );
