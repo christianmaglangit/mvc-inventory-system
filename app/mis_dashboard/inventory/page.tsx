@@ -12,7 +12,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Swal from 'sweetalert2'; 
 
-// --- Interfaces remain unchanged ---
+// --- Interfaces ---
 interface InventoryItem {
   id: string;
   user_id: string; 
@@ -48,11 +48,10 @@ interface InputGroupProps {
 }
 
 export default function InventoryPage() {
-  const [activeTab, setActiveTab] = useState('Inventory');
   const [activeCategory, setActiveCategory] = useState('Personal Computer');
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile Sidebar State
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [inventoryList, setInventoryList] = useState<InventoryItem[]>([]);
@@ -69,7 +68,6 @@ export default function InventoryPage() {
   const [formData, setFormData] = useState(initialForm);
   const router = useRouter();
 
-  // --- Functions (fetchData, handleSave, etc.) remain exactly as you wrote them ---
   const toTitleCase = (str: string) => {
     if (!str) return "";
     return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
@@ -181,7 +179,7 @@ export default function InventoryPage() {
       ]);
 
     autoTable(doc, { head: [tableColumn], body: tableRows as any, startY: 30, styles: { fontSize: 7 }, headStyles: { fillColor: [127, 0, 0] } });
-    doc.save(`MVC_${activeCategory}.pdf`);
+    doc.save(`MVC_${activeCategory.replace(' ', '_')}.pdf`);
   };
 
   const handleEdit = (item: InventoryItem) => {
@@ -228,17 +226,11 @@ export default function InventoryPage() {
       
       {/* --- MOBILE OVERLAY --- */}
       {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-slate-900/50 z-30 lg:hidden backdrop-blur-sm"
-          onClick={() => setIsSidebarOpen(false)}
-        />
+        <div className="fixed inset-0 bg-slate-900/50 z-30 lg:hidden backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />
       )}
 
       {/* --- SIDEBAR --- */}
-      <aside className={`
-        fixed inset-y-0 left-0 z-40 w-64 border-r border-slate-200 bg-white flex flex-col shrink-0 transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0
-        ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
-      `}>
+      <aside className={`fixed inset-y-0 left-0 z-40 w-64 border-r border-slate-200 bg-white flex flex-col shrink-0 transition-transform duration-300 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}>
         <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-red-900 rounded flex items-center justify-center shadow-md">
@@ -246,10 +238,7 @@ export default function InventoryPage() {
             </div>
             <span className="text-lg font-bold tracking-tight text-red-900">MVC.IS</span>
           </div>
-          {/* Close button for mobile */}
-          <button className="lg:hidden text-slate-400 p-1" onClick={() => setIsSidebarOpen(false)}>
-            <X size={20} />
-          </button>
+          <button className="lg:hidden text-slate-400 p-1" onClick={() => setIsSidebarOpen(false)}><X size={20} /></button>
         </div>
 
         <nav className="flex-1 p-4 space-y-1">
@@ -276,16 +265,9 @@ export default function InventoryPage() {
       <main className="flex-1 flex flex-col min-w-0">
         <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-6 shrink-0 z-10 sticky top-0">
           <div className="flex items-center gap-3">
-            {/* MOBILE MENU TOGGLE */}
-            <button 
-              onClick={() => setIsSidebarOpen(true)}
-              className="p-2 -ml-2 rounded-md lg:hidden hover:bg-slate-100 text-slate-600"
-            >
-              <Menu size={20} />
-            </button>
+            <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 rounded-md lg:hidden hover:bg-slate-100 text-slate-600"><Menu size={20} /></button>
             <h1 className="text-sm md:text-lg font-bold tracking-tight">Inventory Management</h1>
           </div>
-
           <div className="relative group hidden sm:block">
             <Search className="absolute left-3 top-2.5 text-slate-400 group-focus-within:text-red-900" size={16} />
             <input type="text" placeholder="Search my records..." className="bg-slate-100 border border-slate-200 rounded-md py-2 pl-9 pr-4 text-xs w-48 md:w-64 focus:outline-none focus:bg-white transition-all shadow-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
@@ -293,7 +275,6 @@ export default function InventoryPage() {
         </header>
 
         <div className="flex-1 overflow-auto p-4 md:p-8 space-y-6 custom-scrollbar">
-          {/* CATEGORY TABS - Responsiveness */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex bg-white border border-slate-200 rounded-lg p-1.5 shadow-sm w-fit gap-1">
               <TabBtn label="Personal Computer" active={activeCategory === 'Personal Computer'} onClick={() => setActiveCategory('Personal Computer')} />
@@ -306,7 +287,6 @@ export default function InventoryPage() {
             </div>
           </div>
 
-          {/* TABLE CONTAINER */}
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
             <div className="overflow-x-auto custom-scrollbar">
               <table className="w-full text-left text-slate-600 whitespace-nowrap min-w-max border-collapse">
@@ -371,7 +351,7 @@ export default function InventoryPage() {
         </div>
       </main>
 
-      {/* MODAL - Adjusted for Mobile Scrolling */}
+      {/* --- MODAL --- */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-sm transition-all text-[11px]">
           <form onSubmit={handleSaveRecord} className="bg-white rounded-xl shadow-2xl w-full max-w-4xl border border-slate-200 overflow-hidden text-left flex flex-col max-h-[95vh]">
@@ -382,8 +362,8 @@ export default function InventoryPage() {
             <div className="p-4 sm:p-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 overflow-y-auto">
               {activeCategory === 'Personal Computer' ? (
                 <>
-                  <InputGroup label="Building" value={formData.building} onChange={(v) => setFormData({...formData, building: v})} type="select" options={['Admin', 'Plant Ops', 'Logistics', 'Pier', 'Main Gate']} />
-                  <InputGroup label="Department" value={formData.department} onChange={(v) => setFormData({...formData, department: v.toUpperCase()})} type="select" options={['MIS', 'HR', 'FINANCE', 'PURCHASING', 'LOGISTICS', 'PLANT OPS', 'SECURITY']} />
+                  <InputGroup label="Building" value={formData.building} onChange={(v) => setFormData({...formData, building: v})} type="select" options={['Admin', 'IEM 1', 'QC']} />
+                  <InputGroup label="Department" value={formData.department} onChange={(v) => setFormData({...formData, department: v.toUpperCase()})} type="select" options={['MIS', 'HR', 'MARKETING', 'FINANCE', 'SECURITY' ]} />
                   <InputGroup label="User Name" placeholder="Ex: Juan Dela Cruz" value={formData.user_full_name} onChange={(v) => setFormData({...formData, user_full_name: toTitleCase(v)})} required />
                   <InputGroup label="IP Address" placeholder="Ex: 192.168.1.1" value={formData.ip_address} onChange={(v) => setFormData({...formData, ip_address: v})} />
                   <InputGroup label="MAC Address" placeholder="Ex: 00-1A-2B-3C-4D-5E" value={formData.mac_address} onChange={(v) => setFormData({...formData, mac_address: v.toUpperCase()})} />
@@ -396,13 +376,17 @@ export default function InventoryPage() {
                 </>
               ) : (
                 <>
-                  <InputGroup label="Item Name" value={formData.item_name} onChange={(v) => setFormData({...formData, item_name: v})} type="select" options={['Monitor', 'Keyboard', 'Mouse', 'System Unit', 'RAM', 'SSD/HDD', 'AVR/UPS', 'Printer', 'Laptop', 'Router/Switch']} />
-                  <InputGroup label="Brand / Model" value={formData.brand_model} onChange={(v) => setFormData({...formData, brand_model: v})} type="select" options={['Dell', 'HP', 'Lenovo', 'Logitech', 'Asus', 'Acer', 'Samsung', 'TP-Link', 'Cisco', 'Epson', 'Canon']} />
+                  <InputGroup label="Item Name" value={formData.item_name} onChange={(v) => setFormData({...formData, item_name: v})} type="select" options={[
+                    'Monitor', 'Keyboard', 'Mouse', 'System Unit', 'RAM', 'SSD/HDD', 'AVR/UPS', 'Printer', 'Laptop', 'Router/Switch',
+                    'RJ45 Connectors (Cat6)', 'RJ45 Connectors (Cat5e)', 'Rubber Boots (RJ45)', 'Power Cable', 'VGA Cable', 'HDMI Cable', 
+                    'LAN Cable (Cat6)', 'LAN Cable (Cat5e)', 'Patch Cord', 'USB Cable', 'Display Port Cable', 'Power Strip / Extension'
+                  ]} />
+                  <InputGroup label="Brand / Model" value={formData.brand_model} onChange={(v) => setFormData({...formData, brand_model: v})} type="select" options={['Dell', 'HP', 'Lenovo', 'Logitech', 'Asus', 'Acer', 'Samsung', 'TP-Link', 'Cisco', 'Epson', 'Canon', 'Generic']} />
                   <InputGroup label="Quantity" type="number" value={formData.quantity} onChange={(v) => setFormData({...formData, quantity: parseInt(v) || 0})} />
-                  <InputGroup label="Unit" value={formData.unit} onChange={(v) => setFormData({...formData, unit: v})} type="select" options={['Pcs', 'Set', 'Unit', 'Box']} />
+                  <InputGroup label="Unit" value={formData.unit} onChange={(v) => setFormData({...formData, unit: v})} type="select" options={['Pcs', 'Set', 'Unit', 'Box', 'Roll', 'Meters', 'Pack']} />
                   <InputGroup label="Status" value={formData.status} onChange={(v) => setFormData({...formData, status: v})} type="select" options={['New', 'Used', 'Unused', 'Defective']} />
                   {formData.status === 'Used' && (
-                    <InputGroup label="Username" placeholder="Enter assigned user" value={formData.user_full_name} onChange={(v) => setFormData({...formData, user_full_name: toTitleCase(v)})} required />
+                    <InputGroup label="Fullname" placeholder="Enter assigned user" value={formData.user_full_name} onChange={(v) => setFormData({...formData, user_full_name: toTitleCase(v)})} required />
                   )}
                   <InputGroup label="Location" value={formData.location} onChange={(v) => setFormData({...formData, location: v})} type="select" options={['MIS STORAGE', 'MIS OFFICE', 'CABINET A', 'CABINET B', 'PLANT STORAGE']} />
                 </>
@@ -418,7 +402,6 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {/* CSS remains same */}
       <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar::-webkit-scrollbar { height: 12px; width: 12px; } 
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
@@ -429,7 +412,6 @@ export default function InventoryPage() {
   );
 }
 
-// Helpers (Same as previous but NavItem improved for clicking/closing mobile nav)
 function NavItem({ icon, label, active = false, onClick }: any) {
   return (
     <button onClick={onClick} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all text-xs font-medium group relative overflow-hidden ${active ? 'bg-red-50 text-red-900 font-bold border-l-4 border-red-900' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}>
