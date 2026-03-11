@@ -11,7 +11,7 @@ import {
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Swal from 'sweetalert2'; 
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx'; 
 
 // --- Interfaces ---
 interface InventoryItem {
@@ -79,13 +79,6 @@ const cpuOptionsMap: Record<string, string[]> = {
   'Apple': ['M4 Max', 'M4 Pro', 'M4', 'M3 Max', 'M3 Pro', 'M3', 'M2 Ultra', 'M2 Max', 'M2 Pro', 'M2', 'M1 Ultra', 'M1 Max', 'M1 Pro', 'M1', 'Intel Core i9', 'Intel Core i7', 'Intel Core i5'],
 };
 
-const epsList = [
-  'Kaspersky', 'Microsoft', 'Symantec', 'McAfee', 'Trend Micro', 
-  'Sophos', 'CrowdStrike', 'SentinelOne', 'Bitdefender', 'ESET', 
-  'VMware', 'Palo Alto Networks', 'Cisco', 'Fortinet', 'Avast', 
-  'AVG', 'Malwarebytes', 'None'
-];
-
 const romList = ['128GB', '240GB', '256GB', '480GB', '500GB', '512GB', '1TB', '2TB'];
 const printerList = ['Epson L3110', 'Epson L3210', 'Brother L210'];
 
@@ -107,7 +100,7 @@ export default function InventoryPage() {
     ms_office_version: 'Home & Business 2021', ms_office_status: 'Active', 
     processor_brand: 'Intel', processor_gen: '10th Gen', 
     processor_cpu: 'Core i5', processor_model: '', ram: '8GB', rom: '256GB', 
-    storage_drive: 'SSD', kaspersky: 'Kaspersky', 
+    storage_drive: 'SSD', kaspersky: 'Active', 
     phone: 'No', phone_connection_type: 'Local', phone_type: 'Landline', phone_number: '', 
     printer: 'No', printer_name: 'Epson L3110', 
     backup: 'No', backup_schedule: 'Daily', 
@@ -252,7 +245,7 @@ export default function InventoryPage() {
 
     // Define Headers
     const headers = activeCategory === 'Personal Computer'
-      ? ["Building", "Department", "User Full Name", "Computer Type", "Email", "Device Name", "OS Edition", "OS Version", "Status", "MS Office Version", "MS Office Status", "Processor Brand", "Processor Gen", "Processor CPU", "Processor Model", "RAM", "ROM/Capacity", "Storage Drive", "EPS", "Phone Connected", "Phone Conn Type", "Phone Type", "Phone Number", "Printer Connected", "Printer Name", "Backup Configured", "Backup Schedule"]
+      ? ["Building", "Department", "User Full Name", "Computer Type", "Email", "Device Name", "OS Edition", "OS Version", "Status", "MS Office Version", "MS Office Status", "Processor Brand", "Processor Gen", "Processor CPU", "Processor Model", "RAM", "ROM/Capacity", "Storage Drive", "Kaspersky", "Phone Connected", "Phone Conn Type", "Phone Type", "Phone Number", "Printer Connected", "Printer Name", "Backup Configured", "Backup Schedule"]
       : ["Item Name", "Brand/Model", "User", "Quantity", "Unit", "Status", "Location"];
 
     const tableData = dataToExport.map(item => {
@@ -310,7 +303,7 @@ export default function InventoryPage() {
     doc.text(`Inventory Report: ${activeCategory}`, 14, 28);
 
     const tableColumn = activeCategory === 'Personal Computer' 
-      ? ["Bldg", "Dept", "User", "Type", "Device", "OS", "Status", "Office Ver", "Office Stat", "CPU", "RAM", "Drive", "EPS", "Printer", "Phone Type", "Phone #", "Backup"]
+      ? ["Bldg", "Dept", "User", "Type", "Device", "OS", "Status", "Office Ver", "Office Stat", "CPU", "RAM", "Drive", "Kaspersky", "Printer", "Phone Type", "Phone #", "Backup"]
       : ["Item Name", "Brand/Model", "User", "Qty", "Unit", "Status", "Location"];
 
     const tableRows = dataToExport.map(item => {
@@ -522,7 +515,7 @@ export default function InventoryPage() {
                         <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">RAM</th>
                         <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">ROM / Capacity</th>
                         <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">Storage drive</th>
-                        <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">EPS</th>
+                        <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">KASPERSKY</th>
                         <th colSpan={3} className="px-3 py-2 border-r border-b border-slate-200 text-center bg-blue-50 font-bold uppercase text-slate-600 text-[10px]">PHONE</th>
                         <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center bg-blue-50 font-bold uppercase text-slate-600 text-[10px]">PRINTER</th>
                         <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center bg-blue-50 font-bold uppercase text-slate-600 text-[10px]">BACKUP</th>
@@ -593,7 +586,9 @@ export default function InventoryPage() {
                             <td className="px-3 py-3.5 border-r border-b border-slate-100 font-medium uppercase">{item.ram}</td>
                             <td className="px-3 py-3.5 border-r border-b border-slate-100 font-medium text-blue-800 uppercase">{item.rom}</td>
                             <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.storage_drive}</td>
-                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.kaspersky}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">
+                              <span className={`px-2 py-0.5 rounded-full font-bold border-slate-50 ${item.kaspersky?.toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{item.kaspersky}</span>
+                            </td>
                             
                             <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.phone?.toLowerCase() === 'yes' ? item.phone_connection_type : '-'}</td>
                             <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.phone?.toLowerCase() === 'yes' ? item.phone_type : '-'}</td>
@@ -670,16 +665,7 @@ export default function InventoryPage() {
                   ]} />
                   <InputGroup label="MS Office Status" value={formData.ms_office_status || 'Active'} onChange={(v) => setFormData({...formData, ms_office_status: v})} type="select" options={['Active', 'Not Active']} />
 
-                  <InputGroup 
-                    label="EPS" 
-                    value={epsList.some(o => o.toUpperCase() === (formData.kaspersky || '').toUpperCase()) ? (epsList.find(o => o.toUpperCase() === (formData.kaspersky || '').toUpperCase()) || 'Kaspersky') : 'Others'} 
-                    onChange={(v) => setFormData({...formData, kaspersky: v === 'Others' ? '' : v})} 
-                    type="select" 
-                    options={[...epsList, 'Others']} 
-                  />
-                  {(!epsList.some(o => o.toUpperCase() === (formData.kaspersky || '').toUpperCase()) || formData.kaspersky === '') && (
-                    <InputGroup label="Specify EPS" placeholder="Ex: Custom Antivirus" value={formData.kaspersky || ''} onChange={(v) => setFormData({...formData, kaspersky: v})} required />
-                  )}
+                  <InputGroup label="Kaspersky" value={formData.kaspersky} onChange={(v) => setFormData({...formData, kaspersky: v})} type="select" options={['Active', 'Not Active']} />
 
                   <div className="col-span-full font-bold text-slate-800 border-b pb-1 mb-2 mt-2">Processor Details</div>
                   
@@ -779,13 +765,13 @@ export default function InventoryPage() {
                     <>
                       <InputGroup 
                         label="Printer Name" 
-                        value={printerList.some(o => o.toUpperCase() === (formData.printer_name || '').toUpperCase()) ? (printerList.find(o => o.toUpperCase() === (formData.printer_name || '').toUpperCase()) || 'Epson L3110') : 'Others'} 
+                        value={['Epson L3110', 'Epson L3210', 'Brother L210'].includes(formData.printer_name || '') ? formData.printer_name || 'Epson L3110' : 'Others'} 
                         onChange={(v) => setFormData({...formData, printer_name: v === 'Others' ? '' : v})} 
                         type="select" 
-                        options={[...printerList, 'Others']} 
+                        options={['Epson L3110', 'Epson L3210', 'Brother L210', 'Others']} 
                       />
                       {/* CUSTOM PRINTER NAME FIELD IF 'OTHERS' IS SELECTED */}
-                      {(!printerList.some(o => o.toUpperCase() === (formData.printer_name || '').toUpperCase()) || formData.printer_name === '') && (
+                      {(!['Epson L3110', 'Epson L3210', 'Brother L210'].includes(formData.printer_name || '') || formData.printer_name === '') && (
                         <InputGroup label="Specify Printer" placeholder="Ex: HP DeskJet" value={formData.printer_name || ''} onChange={(v) => setFormData({...formData, printer_name: v})} required />
                       )}
                     </>
