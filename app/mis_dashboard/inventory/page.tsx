@@ -11,7 +11,7 @@ import {
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Swal from 'sweetalert2'; 
-import * as XLSX from 'xlsx'; // <-- ADDED XLSX IMPORT
+import * as XLSX from 'xlsx';
 
 // --- Interfaces ---
 interface InventoryItem {
@@ -27,13 +27,13 @@ interface InventoryItem {
   os_version?: string;
   status?: string;
   ms_office_version: string;
-  ms_office_status?: string; // <-- ADDED MS OFFICE STATUS
+  ms_office_status?: string;
   processor_brand?: string;
   processor_gen?: string;
   processor_cpu?: string;
   processor_model?: string;
   ram: string;
-  rom?: string; // Serves as the Capacity now
+  rom?: string; 
   storage_drive?: string;
   kaspersky: string;
   phone?: string;
@@ -91,12 +91,12 @@ export default function InventoryPage() {
   const initialForm = {
     building: 'Admin', department: 'MIS', user_full_name: '', computer_type: 'Desktop', email: '', device_name: '',
     os_edition: 'Windows 10 Pro', os_version: '', status: 'Active',
-    ms_office_version: 'Home & Business 2021', ms_office_status: 'Active', // ADDED MS OFFICE STATUS
+    ms_office_version: 'Home & Business 2021', ms_office_status: 'Active', 
     processor_brand: 'Intel', processor_gen: '10th Gen', 
     processor_cpu: 'Core i5', processor_model: '', ram: '8GB', rom: '256GB', 
     storage_drive: 'SSD', kaspersky: 'Active', 
-    phone: 'No', phone_number: '', printer: 'No', printer_name: '',
-    backup: 'No', backup_schedule: '', 
+    phone: 'No', phone_number: '', printer: 'No', printer_name: 'Epson L3110', // Added default to avoid blank save
+    backup: 'No', backup_schedule: 'Daily', // Added default to avoid blank save
     // Parts Form Fields
     item_name: 'Monitor', brand_model: 'Dell', serial_number: '', quantity: 1, unit: 'Pcs', location: 'MIS STORAGE'
   };
@@ -164,13 +164,16 @@ export default function InventoryPage() {
           user_full_name: formData.user_full_name, computer_type: formData.computer_type, email: formData.email,
           device_name: formData.device_name, os_edition: formData.os_edition, 
           os_version: formData.os_version, status: formData.status, 
-          ms_office_version: formData.ms_office_version, ms_office_status: formData.ms_office_status, // ADDED MS OFFICE STATUS
+          ms_office_version: formData.ms_office_version, ms_office_status: formData.ms_office_status,
           processor_brand: formData.processor_brand, processor_gen: formData.processor_gen, processor_cpu: formData.processor_cpu, 
           processor_model: formData.processor_model, ram: formData.ram, rom: formData.rom, 
           storage_drive: formData.storage_drive, kaspersky: formData.kaspersky, 
-          phone: formData.phone, phone_number: formData.phone === 'Yes' ? formData.phone_number : '',
-          printer: formData.printer, printer_name: formData.printer === 'Yes' ? formData.printer_name : '',
-          backup: formData.backup, backup_schedule: formData.backup === 'Yes' ? formData.backup_schedule : '' 
+          phone: formData.phone, 
+          phone_number: formData.phone?.toLowerCase() === 'yes' ? formData.phone_number : '',
+          printer: formData.printer, 
+          printer_name: formData.printer?.toLowerCase() === 'yes' ? formData.printer_name : '',
+          backup: formData.backup, 
+          backup_schedule: formData.backup?.toLowerCase() === 'yes' ? formData.backup_schedule : '' 
         };
       } else {
         payload = { ...payload,
@@ -219,9 +222,9 @@ export default function InventoryPage() {
           item.email || "", item.device_name || "", item.os_edition || "", item.os_version || "", item.status || "",
           item.ms_office_version || "", item.ms_office_status || "", item.processor_brand || "", item.processor_gen || "", item.processor_cpu || "",
           item.processor_model || "", item.ram || "", item.rom || "", item.storage_drive || "", item.kaspersky || "",
-          item.phone || "", item.phone === 'Yes' ? item.phone_number || "" : "None",
-          item.printer || "", item.printer === 'Yes' ? item.printer_name || "" : "None",
-          item.backup || "", item.backup === 'Yes' ? item.backup_schedule || "" : "None"
+          item.phone || "", item.phone?.toLowerCase() === 'yes' ? item.phone_number || "" : "None",
+          item.printer || "", item.printer?.toLowerCase() === 'yes' ? item.printer_name || "" : "None",
+          item.backup || "", item.backup?.toLowerCase() === 'yes' ? item.backup_schedule || "" : "None"
         ];
       } else {
         return [
@@ -277,9 +280,9 @@ export default function InventoryPage() {
         item.device_name || "", `${item.os_edition} ${item.os_version}`, 
         item.status || "", item.ms_office_version || "", item.ms_office_status || "", `${item.processor_brand} ${item.processor_cpu}`, 
         item.ram || "", `${item.rom} ${item.storage_drive}`, 
-        item.printer === 'Yes' ? item.printer_name : "None",
-        item.phone === 'Yes' ? item.phone_number : "None",
-        item.backup === 'Yes' ? item.backup_schedule : "None"
+        item.printer?.toLowerCase() === 'yes' ? item.printer_name : "None",
+        item.phone?.toLowerCase() === 'yes' ? item.phone_number : "None",
+        item.backup?.toLowerCase() === 'yes' ? item.backup_schedule : "None"
       ] : [
         item.item_name || "", item.brand_model || "", item.user_full_name || "N/A",
         item.quantity?.toString() || "0", item.unit || "", item.status || "", item.location || ""
@@ -409,10 +412,7 @@ export default function InventoryPage() {
                           <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">DEVICE NAME</th>
                           <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center">Windos SPICIFICATION</th>
                           <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">STATUS</th>
-                          
-                          {/* --- CHANGED MS OFFICE TO colSpan=2 --- */}
                           <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center">MS OFFICE</th>
-                          
                           <th colSpan={4} className="px-3 py-2 border-r border-b border-slate-200 text-center">PROCESSOR</th>
                           <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">RAM</th>
                           <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">ROM / Capacity</th>
@@ -490,11 +490,11 @@ export default function InventoryPage() {
                                 <span className={`px-2 py-0.5 rounded-full font-bold border-slate-50 ${item.kaspersky?.toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{item.kaspersky}</span>
                               </td>
                               <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.phone}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.phone === 'Yes' ? item.phone_number : '-'}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.phone?.toLowerCase() === 'yes' ? item.phone_number || '-' : '-'}</td>
                               <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.printer}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.printer === 'Yes' ? item.printer_name : '-'}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.printer?.toLowerCase() === 'yes' ? item.printer_name || '-' : '-'}</td>
                               <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.backup}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.backup === 'Yes' ? item.backup_schedule : '-'}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.backup?.toLowerCase() === 'yes' ? item.backup_schedule || '-' : '-'}</td>
                             </>
                           ) : (
                             <>
@@ -552,9 +552,7 @@ export default function InventoryPage() {
                   <div className="col-span-full font-bold text-slate-800 border-b pb-1 mb-2 mt-2">OS & Software</div>
                   <InputGroup label="OS Edition" value={formData.os_edition || ''} onChange={(v) => setFormData({...formData, os_edition: v})} type="select" options={['Windows 11 Pro', 'Windows 11 Home', 'Windows 10 Pro', 'Windows 10 Home', 'Windows 8.1', 'Windows 7', 'macOS', 'Linux']} />
                   <InputGroup label="OS Version" placeholder="Ex: 22H2" value={formData.os_version || ''} onChange={(v) => setFormData({...formData, os_version: v})} />
-                  
-                  {/* --- MS OFFICE WITH STATUS --- */}
-                  <InputGroup label="MS Office Version" value={formData.ms_office_version} onChange={(v) => setFormData({...formData, ms_office_version: v})} type="select" options={[
+                  <InputGroup label="MS Office" value={formData.ms_office_version} onChange={(v) => setFormData({...formData, ms_office_version: v})} type="select" options={[
                     'Home & Business 2024', 'Home & Business 2021', 'Home & Business 2019', 'Home & Business 2016', 
                     'Professional Plus 2024', 'Professional Plus 2021', 'Professional Plus 2019', 'Professional Plus 2016', 
                     'Office 365', 'None'
@@ -615,14 +613,14 @@ export default function InventoryPage() {
                   
                   <div className="col-span-full font-bold text-slate-800 border-b pb-1 mb-2 mt-2">Peripherals</div>
                   <InputGroup label="Phone Connected?" value={formData.phone || 'No'} onChange={(v) => setFormData({...formData, phone: v})} type="select" options={['Yes', 'No']} />
-                  {formData.phone === 'Yes' && (
+                  {formData.phone?.toLowerCase() === 'yes' && (
                     <InputGroup label="Phone Number" placeholder="Ex: Local 101" value={formData.phone_number || ''} onChange={(v) => setFormData({...formData, phone_number: v})} required />
                   )}
                   
                   <InputGroup label="Printer Connected?" value={formData.printer || 'No'} onChange={(v) => setFormData({...formData, printer: v})} type="select" options={['Yes', 'No']} />
                   
                   {/* PRINTER NAME: SHOW ONLY IF PRINTER IS YES */}
-                  {formData.printer === 'Yes' && (
+                  {formData.printer?.toLowerCase() === 'yes' && (
                     <>
                       <InputGroup 
                         label="Printer Name" 
@@ -641,7 +639,7 @@ export default function InventoryPage() {
                   {/* --- ADDED BACKUP SETTINGS --- */}
                   <div className="col-span-full font-bold text-slate-800 border-b pb-1 mb-2 mt-2">Backup Settings</div>
                   <InputGroup label="Backup Configured?" value={formData.backup || 'No'} onChange={(v) => setFormData({...formData, backup: v})} type="select" options={['Yes', 'No']} />
-                  {formData.backup === 'Yes' && (
+                  {formData.backup?.toLowerCase() === 'yes' && (
                     <InputGroup label="Backup Schedule" value={formData.backup_schedule || 'Daily'} onChange={(v) => setFormData({...formData, backup_schedule: v})} type="select" options={['Daily', 'Weekly', 'Monthly']} />
                   )}
 
