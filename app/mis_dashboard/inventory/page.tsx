@@ -508,8 +508,8 @@ export default function InventoryPage() {
               {activeCategory === 'Personal Computer' ? (
                 <>
                   <div className="col-span-full font-bold text-slate-800 border-b pb-1 mb-2">User & Device Info</div>
-                  <InputGroup label="Building" value={formData.building} onChange={(v) => setFormData({...formData, building: v})} type="select" options={['Admin', 'IEM 1', 'QC', 'CONTRACTOR',]} />
-                  <InputGroup label="Department" value={formData.department} onChange={(v) => setFormData({...formData, department: v})} type="select" options={['MIS', 'HR', 'MARKETING', 'FINANCE', 'SECURITY', 'IEM 1', 'QC', 'CONTRACTOR', ]} />
+                  <InputGroup label="Building" value={formData.building} onChange={(v) => setFormData({...formData, building: v})} type="select" options={['Admin', 'Security', 'IEM 1', 'IEM 2', 'QC', 'CONTRACTOR',]} />
+                  <InputGroup label="Department" value={formData.department} onChange={(v) => setFormData({...formData, department: v})} type="select" options={['MIS', 'HR', 'TECHNICAL', 'EHS', 'ENGINEERING', 'MATERIALS', 'MARKETING & SALES', 'FINANCE & ACCOUNTING', 'SECURITY', 'IEM 1', 'IEM 2', 'QC', 'CONTRACTOR', ]} />
                   <InputGroup label="User Name" placeholder="Ex: Juan Dela Cruz" value={formData.user_full_name} onChange={(v) => setFormData({...formData, user_full_name: v})} required />
                   <InputGroup label="Computer Type" value={formData.computer_type || 'Desktop'} onChange={(v) => setFormData({...formData, computer_type: v})} type="select" options={['Desktop', 'NUC', 'Laptop']} />
                   <InputGroup label="Email" placeholder="user@domain.com" value={formData.email || ''} onChange={(v) => setFormData({...formData, email: v})} />
