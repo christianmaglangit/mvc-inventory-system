@@ -32,7 +32,7 @@ interface InventoryItem {
   processor_cpu?: string;
   processor_model?: string;
   ram: string;
-  rom?: string; 
+  rom?: string; // Serves as the Capacity now
   storage_drive?: string;
   kaspersky: string;
   phone?: string;
@@ -98,6 +98,11 @@ export default function InventoryPage() {
 
   const [formData, setFormData] = useState(initialForm);
   const router = useRouter();
+
+  const toTitleCase = (str: string) => {
+    if (!str) return "";
+    return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  };
 
   const getTableName = (cat: string) => {
     const map: Record<string, string> = {
@@ -194,7 +199,9 @@ export default function InventoryPage() {
       return;
     }
 
-    // 1. Define Headers and Row Data
+    let csvContent = "data:text/csv;charset=utf-8,";
+
+    // Define Headers
     const headers = activeCategory === 'Personal Computer'
       ? ["Building", "Department", "User Full Name", "Computer Type", "Email", "Device Name", "OS Edition", "OS Version", "Status", "MS Office", "Processor Brand", "Processor Gen", "Processor CPU", "Processor Model", "RAM", "ROM/Capacity", "Storage Drive", "Kaspersky", "Phone Connected", "Phone Number", "Printer Connected", "Printer Name"]
       : ["Item Name", "Brand/Model", "User", "Quantity", "Unit", "Status", "Location"];
@@ -212,7 +219,7 @@ export default function InventoryPage() {
       } else {
         return [
           item.item_name || "", item.brand_model || "", item.user_full_name || "N/A",
-          item.quantity || "0", item.unit || "", item.status || "", item.location || ""
+          item.quantity || "0", item.unit || "", item.status || "", item.location
         ];
       }
     });
@@ -366,129 +373,136 @@ export default function InventoryPage() {
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto p-4 md:p-8 space-y-6 custom-scrollbar">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex bg-white border border-slate-200 rounded-lg p-1.5 shadow-sm w-fit gap-1">
-              <TabBtn label="Personal Computer" active={activeCategory === 'Personal Computer'} onClick={() => setActiveCategory('Personal Computer')} />
-              <TabBtn label="Computer Parts" active={activeCategory === 'Computer Parts'} onClick={() => setActiveCategory('Computer Parts')} />
+        <div className="flex-1 overflow-auto p-4 md:p-8 flex flex-col custom-scrollbar">
+          <div className="space-y-6 flex-1">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="flex bg-white border border-slate-200 rounded-lg p-1.5 shadow-sm w-fit gap-1">
+                <TabBtn label="Personal Computer" active={activeCategory === 'Personal Computer'} onClick={() => setActiveCategory('Personal Computer')} />
+                <TabBtn label="Computer Parts" active={activeCategory === 'Computer Parts'} onClick={() => setActiveCategory('Computer Parts')} />
+              </div>
+
+              <div className="flex gap-2 w-full sm:w-auto">
+                <button onClick={handleExportPDF} className="flex-1 sm:flex-none flex items-center justify-center border border-red-200 gap-2 px-4 py-2 bg-red-50 text-red-800 text-[10px] font-bold rounded-lg hover:bg-red-100 transition-all shadow-sm"><Download size={14} /> PDF</button>
+                <button onClick={handleExportExcel} className="flex-1 sm:flex-none flex items-center justify-center border border-emerald-200 gap-2 px-4 py-2 bg-emerald-50 text-emerald-800 text-[10px] font-bold rounded-lg hover:bg-emerald-100 transition-all shadow-sm"><Download size={14} /> Excel</button>
+                <button onClick={() => { setEditingId(null); setFormData(initialForm); setIsModalOpen(true); }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-red-900 text-white text-[10px] font-bold rounded-lg shadow-md active:scale-95 transition-all"><Plus size={14} /> Add Record</button>
+              </div>
             </div>
 
-            <div className="flex gap-2 w-full sm:w-auto">
-              <button onClick={handleExportPDF} className="flex-1 sm:flex-none flex items-center justify-center border border-red-200 gap-2 px-4 py-2 bg-red-50 text-red-800 text-[10px] font-bold rounded-lg hover:bg-red-100 transition-all shadow-sm"><Download size={14} /> PDF</button>
-              <button onClick={handleExportExcel} className="flex-1 sm:flex-none flex items-center justify-center border border-emerald-200 gap-2 px-4 py-2 bg-emerald-50 text-emerald-800 text-[10px] font-bold rounded-lg hover:bg-emerald-100 transition-all shadow-sm"><Download size={14} /> Excel</button>
-              <button onClick={() => { setEditingId(null); setFormData(initialForm); setIsModalOpen(true); }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-red-900 text-white text-[10px] font-bold rounded-lg shadow-md active:scale-95 transition-all"><Plus size={14} /> Add Record</button>
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+              <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left text-slate-600 whitespace-nowrap min-w-max border-collapse">
+                  
+                  <thead className="bg-blue-50/50 font-bold border-b border-slate-200 uppercase text-slate-600 text-[10px] text-center">
+                    {activeCategory === 'Personal Computer' ? (
+                      <>
+                        <tr>
+                          <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">BUILDING</th>
+                          <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">DEPARTMENT / OFFICE</th>
+                          <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 bg-white sticky left-0 z-20 shadow-sm text-slate-900 align-middle">USER &quot;Full Name&quot;</th>
+                          <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">COMP. TYPE</th>
+                          <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">EMAIL</th>
+                          <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">DEVICE NAME</th>
+                          <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center">Windos SPICIFICATION</th>
+                          <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">STATUS</th>
+                          <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">MS OFFICE VERSION</th>
+                          <th colSpan={4} className="px-3 py-2 border-r border-b border-slate-200 text-center">PROCESSOR</th>
+                          <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">RAM</th>
+                          <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">ROM / Capacity</th>
+                          <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">Storage drive</th>
+                          <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">KASPERSKY</th>
+                          <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center">PHONE</th>
+                          <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center">PRINTER</th>
+                          <th rowSpan={2} className="px-4 py-3 text-center sticky right-0 bg-slate-50 border-l shadow-sm align-middle z-20">Actions</th>
+                        </tr>
+                        <tr>
+                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">EDITION</th>
+                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">VERSION</th>
+                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">BRAND</th>
+                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">generation</th>
+                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">CPU</th>
+                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">model number</th>
+                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Conn.</th>
+                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Number</th>
+                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Conn.</th>
+                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Name</th>
+                        </tr>
+                      </>
+                    ) : (
+                      <tr>
+                        <th className="px-4 py-4 border-r border-slate-100 align-middle">Item Name</th>
+                        <th className="px-4 py-4 border-r border-slate-100 align-middle">Brand</th>
+                        <th className="px-4 py-4 border-r border-slate-100 bg-white sticky left-0 z-10 shadow-sm text-slate-900 text-left align-middle">User</th>
+                        <th className="px-4 py-4 border-r border-slate-100 align-middle">Qty</th>
+                        <th className="px-4 py-4 border-r border-slate-100 align-middle">Status</th>
+                        <th className="px-4 py-4 border-r border-slate-100 align-middle">Location</th>
+                        <th className="px-4 py-4 text-center sticky right-0 bg-slate-50 border-l shadow-sm align-middle">Actions</th>
+                      </tr>
+                    )}
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-center">
+                    {loading ? (
+                      <tr><td colSpan={24} className="p-20 text-center"><Loader2 className="animate-spin inline text-red-900" size={32}/></td></tr>
+                    ) : filteredData.length > 0 ? (
+                      filteredData.map((item) => (
+                        <tr key={item.id} className="hover:bg-slate-50/80 transition-colors group text-slate-700">
+                          {activeCategory === 'Personal Computer' ? (
+                            <>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.building}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.department}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 font-bold text-slate-900 bg-white sticky left-0 z-10 transition-colors group-hover:bg-slate-50 uppercase">{item.user_full_name}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 font-semibold uppercase">{item.computer_type}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 text-blue-600 uppercase">{item.email}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 font-bold uppercase">{item.device_name}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.os_edition}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.os_version}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.status}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.ms_office_version}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.processor_brand}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.processor_gen}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.processor_cpu}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.processor_model}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 font-medium uppercase">{item.ram}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 font-medium text-blue-800 uppercase">{item.rom}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.storage_drive}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">
+                                <span className={`px-2 py-0.5 rounded-full font-bold border-slate-50 ${item.kaspersky?.toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{item.kaspersky}</span>
+                              </td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.phone}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.phone === 'Yes' ? item.phone_number : '-'}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.printer}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.printer === 'Yes' ? item.printer_name : '-'}</td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="px-4 py-3.5 border-r border-slate-50 font-bold text-slate-900 text-left uppercase">{item.item_name}</td>
+                              <td className="px-4 border-slate-50 py-3.5 border-r text-left uppercase">{item.brand_model}</td>
+                              <td className="px-4 py-3.5 border-r border-slate-50 bg-white sticky left-0 z-10 group-hover:bg-slate-50 text-left font-semibold uppercase">{item.user_full_name || 'N/A'}</td>
+                              <td className="px-4 py-3.5 border-r border-slate-50 font-bold text-blue-600 uppercase">{item.quantity} {item.unit}</td>
+                              <td className="px-4 py-3.5 border-r border-slate-50 uppercase"><span className={`px-2 py-0.5 rounded-full text-[10px] border-slate-50 font-bold ${item.status === 'New' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'}`}>{item.status}</span></td>
+                              <td className="px-4 py-3.5 border-r border-slate-50 italic text-slate-500 uppercase">{item.location}</td>
+                            </>
+                          )}
+                          <td className="px-4 py-3.5 text-center sticky right-0 bg-white group-hover:bg-slate-50 border-l border-slate-100 shadow-sm z-10">
+                            <div className="flex gap-1 justify-center">
+                              <button onClick={() => handleEdit(item)} className="p-1 text-slate-400 hover:text-blue-600 transition-all"><Edit size={14} /></button>
+                              <button onClick={() => handleDelete(item.id, item.user_full_name || item.item_name || "")} className="p-1 text-slate-400 hover:text-red-600 transition-all"><Trash2 size={14} /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr><td colSpan={24} className="p-10 text-center italic text-slate-400 uppercase text-[10px]">No records found</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-
-          <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-            <div className="overflow-x-auto custom-scrollbar">
-              <table className="w-full text-left text-slate-600 whitespace-nowrap min-w-max border-collapse">
-                
-                <thead className="bg-blue-50/50 font-bold border-b border-slate-200 uppercase text-slate-600 text-[10px] text-center">
-                  {activeCategory === 'Personal Computer' ? (
-                    <>
-                      <tr>
-                        <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">BUILDING</th>
-                        <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">DEPARTMENT / OFFICE</th>
-                        <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 bg-white sticky left-0 z-20 shadow-sm text-slate-900 align-middle">USER &quot;Full Name&quot;</th>
-                        <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">COMP. TYPE</th>
-                        <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">EMAIL</th>
-                        <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">DEVICE NAME</th>
-                        <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center">Windos SPICIFICATION</th>
-                        <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">STATUS</th>
-                        <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">MS OFFICE VERSION</th>
-                        <th colSpan={4} className="px-3 py-2 border-r border-b border-slate-200 text-center">PROCESSOR</th>
-                        <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">RAM</th>
-                        <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">ROM / Capacity</th>
-                        <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">Storage drive</th>
-                        <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">KASPERSKY</th>
-                        <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center">PHONE</th>
-                        <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center">PRINTER</th>
-                        <th rowSpan={2} className="px-4 py-3 text-center sticky right-0 bg-slate-50 border-l shadow-sm align-middle z-20">Actions</th>
-                      </tr>
-                      <tr>
-                        <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">EDITION</th>
-                        <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">VERSION</th>
-                        <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">BRAND</th>
-                        <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">generation</th>
-                        <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">CPU</th>
-                        <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">model number</th>
-                        <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Conn.</th>
-                        <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Number</th>
-                        <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Conn.</th>
-                        <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Name</th>
-                      </tr>
-                    </>
-                  ) : (
-                    <tr>
-                      <th className="px-4 py-4 border-r border-slate-100 align-middle">Item Name</th>
-                      <th className="px-4 py-4 border-r border-slate-100 align-middle">Brand</th>
-                      <th className="px-4 py-4 border-r border-slate-100 bg-white sticky left-0 z-10 shadow-sm text-slate-900 text-left align-middle">User</th>
-                      <th className="px-4 py-4 border-r border-slate-100 align-middle">Qty</th>
-                      <th className="px-4 py-4 border-r border-slate-100 align-middle">Status</th>
-                      <th className="px-4 py-4 border-r border-slate-100 align-middle">Location</th>
-                      <th className="px-4 py-4 text-center sticky right-0 bg-slate-50 border-l shadow-sm align-middle">Actions</th>
-                    </tr>
-                  )}
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-center">
-                  {loading ? (
-                    <tr><td colSpan={24} className="p-20 text-center"><Loader2 className="animate-spin inline text-red-900" size={32}/></td></tr>
-                  ) : filteredData.length > 0 ? (
-                    filteredData.map((item) => (
-                      <tr key={item.id} className="hover:bg-slate-50/80 transition-colors group text-slate-700">
-                        {activeCategory === 'Personal Computer' ? (
-                          <>
-                            <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.building}</td>
-                            <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.department}</td>
-                            <td className="px-3 py-3.5 border-r border-slate-100 font-bold text-slate-900 bg-white sticky left-0 z-10 transition-colors group-hover:bg-slate-50 uppercase">{item.user_full_name}</td>
-                            <td className="px-3 py-3.5 border-r border-slate-100 font-semibold uppercase">{item.computer_type}</td>
-                            <td className="px-3 py-3.5 border-r border-slate-100 text-blue-600 uppercase">{item.email}</td>
-                            <td className="px-3 py-3.5 border-r border-slate-100 font-bold uppercase">{item.device_name}</td>
-                            <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.os_edition}</td>
-                            <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.os_version}</td>
-                            <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.status}</td>
-                            <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.ms_office_version}</td>
-                            <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.processor_brand}</td>
-                            <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.processor_gen}</td>
-                            <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.processor_cpu}</td>
-                            <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.processor_model}</td>
-                            <td className="px-3 py-3.5 border-r border-slate-100 font-medium uppercase">{item.ram}</td>
-                            <td className="px-3 py-3.5 border-r border-slate-100 font-medium text-blue-800 uppercase">{item.rom}</td>
-                            <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.storage_drive}</td>
-                            <td className="px-3 py-3.5 border-r border-slate-100 uppercase">
-                              <span className={`px-2 py-0.5 rounded-full font-bold border-slate-50 ${item.kaspersky?.toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{item.kaspersky}</span>
-                            </td>
-                            <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.phone}</td>
-                            <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.phone === 'Yes' ? item.phone_number : '-'}</td>
-                            <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.printer}</td>
-                            <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.printer === 'Yes' ? item.printer_name : '-'}</td>
-                          </>
-                        ) : (
-                          <>
-                            <td className="px-4 py-3.5 border-r border-slate-50 font-bold text-slate-900 text-left uppercase">{item.item_name}</td>
-                            <td className="px-4 border-slate-50 py-3.5 border-r text-left uppercase">{item.brand_model}</td>
-                            <td className="px-4 py-3.5 border-r border-slate-50 bg-white sticky left-0 z-10 group-hover:bg-slate-50 text-left font-semibold uppercase">{item.user_full_name || 'N/A'}</td>
-                            <td className="px-4 py-3.5 border-r border-slate-50 font-bold text-blue-600 uppercase">{item.quantity} {item.unit}</td>
-                            <td className="px-4 py-3.5 border-r border-slate-50 uppercase"><span className={`px-2 py-0.5 rounded-full text-[10px] border-slate-50 font-bold ${item.status === 'New' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'}`}>{item.status}</span></td>
-                            <td className="px-4 py-3.5 border-r border-slate-50 italic text-slate-500 uppercase">{item.location}</td>
-                          </>
-                        )}
-                        <td className="px-4 py-3.5 text-center sticky right-0 bg-white group-hover:bg-slate-50 border-l border-slate-100 shadow-sm z-10">
-                          <div className="flex gap-1 justify-center">
-                            <button onClick={() => handleEdit(item)} className="p-1 text-slate-400 hover:text-blue-600 transition-all"><Edit size={14} /></button>
-                            <button onClick={() => handleDelete(item.id, item.user_full_name || item.item_name || "")} className="p-1 text-slate-400 hover:text-red-600 transition-all"><Trash2 size={14} /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr><td colSpan={24} className="p-10 text-center italic text-slate-400 uppercase text-[10px]">No records found</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          
+          {/* --- ADDED FOOTER HERE --- */}
+          <footer className="mt-6 py-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest border-t border-slate-200/80">
+            Developed by Christian B. Maglangit
+          </footer>
         </div>
       </main>
 

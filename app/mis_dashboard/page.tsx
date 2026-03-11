@@ -141,43 +141,51 @@ export default function SummaryDashboard() {
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto p-4 md:p-8 space-y-6 custom-scrollbar">
-          {loading ? (
-            <div className="h-64 flex items-center justify-center"><Loader2 className="animate-spin text-red-900" size={32}/></div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <KpiCard title="Total Assets" value={stats.totalEquipment} trend="Personal items tracked" icon={<HardDrive size={20} />} color="blue" />
-                <KpiCard title="Personal Computers" value={stats.activePC} trend="Currently Deployed" icon={<Laptop size={20} />} color="emerald" />
-                <KpiCard title="Parts in Storage" value={stats.partsInStorage} trend="In MIS Office" icon={<Activity size={20} />} color="amber" />
-                <KpiCard title="Alerts" value={stats.alerts.length} trend="Needs Attention" icon={<AlertTriangle size={20} />} color="red" isAlert={stats.alerts.length > 0} />
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-                    <h3 className="font-bold text-slate-800 mb-6">Inventory Breakdown</h3>
-                    <div className="space-y-5">
-                      <CategoryBar label="Workstations (PC)" count={stats.activePC} percentage={(stats.activePC / stats.totalEquipment) * 100 || 0} color="bg-blue-600" />
-                      <CategoryBar label="Spare Parts / Storage" count={stats.partsInStorage} percentage={(stats.partsInStorage / stats.totalEquipment) * 100 || 0} color="bg-amber-500" />
-                    </div>
+        {/* Added flex flex-col to allow the footer to push to the bottom */}
+        <div className="flex-1 overflow-auto p-4 md:p-8 flex flex-col custom-scrollbar">
+          <div className="space-y-6 flex-1">
+            {loading ? (
+              <div className="h-64 flex items-center justify-center"><Loader2 className="animate-spin text-red-900" size={32}/></div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <KpiCard title="Total Assets" value={stats.totalEquipment} trend="Personal items tracked" icon={<HardDrive size={20} />} color="blue" />
+                  <KpiCard title="Personal Computers" value={stats.activePC} trend="Currently Deployed" icon={<Laptop size={20} />} color="emerald" />
+                  <KpiCard title="Parts in Storage" value={stats.partsInStorage} trend="In MIS Office" icon={<Activity size={20} />} color="amber" />
+                  <KpiCard title="Alerts" value={stats.alerts.length} trend="Needs Attention" icon={<AlertTriangle size={20} />} color="red" isAlert={stats.alerts.length > 0} />
                 </div>
 
-                <div className="lg:col-span-1 bg-white border border-red-200 rounded-lg overflow-hidden shadow-sm">
-                    <div className="bg-red-50 border-b border-red-100 p-4 flex items-center gap-2">
-                      <ShieldAlert size={18} className="text-red-700" />
-                      <h3 className="font-bold text-red-900">Action Center</h3>
-                    </div>
-                    <div className="p-2 divide-y divide-slate-100">
-                      {stats.alerts.length > 0 ? stats.alerts.map((alert, idx) => (
-                        <AlertItem key={idx} title="Kaspersky Expired" desc={`User: ${alert.user_full_name}`} type="critical" />
-                      )) : (
-                        <div className="p-4 text-center text-xs text-slate-400 italic">No critical alerts for now.</div>
-                      )}
-                    </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2 bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
+                      <h3 className="font-bold text-slate-800 mb-6">Inventory Breakdown</h3>
+                      <div className="space-y-5">
+                        <CategoryBar label="Workstations (PC)" count={stats.activePC} percentage={(stats.activePC / stats.totalEquipment) * 100 || 0} color="bg-blue-600" />
+                        <CategoryBar label="Spare Parts / Storage" count={stats.partsInStorage} percentage={(stats.partsInStorage / stats.totalEquipment) * 100 || 0} color="bg-amber-500" />
+                      </div>
+                  </div>
+
+                  <div className="lg:col-span-1 bg-white border border-red-200 rounded-lg overflow-hidden shadow-sm">
+                      <div className="bg-red-50 border-b border-red-100 p-4 flex items-center gap-2">
+                        <ShieldAlert size={18} className="text-red-700" />
+                        <h3 className="font-bold text-red-900">Action Center</h3>
+                      </div>
+                      <div className="p-2 divide-y divide-slate-100">
+                        {stats.alerts.length > 0 ? stats.alerts.map((alert, idx) => (
+                          <AlertItem key={idx} title="Kaspersky Expired" desc={`User: ${alert.user_full_name}`} type="critical" />
+                        )) : (
+                          <div className="p-4 text-center text-xs text-slate-400 italic">No critical alerts for now.</div>
+                        )}
+                      </div>
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </div>
+          
+          {/* --- ADDED FOOTER HERE --- */}
+          <footer className="mt-12 py-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest border-t border-slate-200/80">
+            Developed by Christian B. Maglangit
+          </footer>
         </div>
       </main>
     </div>
