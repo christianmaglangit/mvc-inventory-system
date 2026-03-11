@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { 
   LayoutDashboard, Search, Server, HardDrive,
-  Plus, X, LogOut, Edit, Trash2, Loader2, Download, Menu 
+  Plus, X, LogOut, Edit, Trash2, Loader2, Download, Menu, Filter
 } from 'lucide-react';
 
 import { jsPDF } from 'jspdf';
@@ -79,12 +79,20 @@ const cpuOptionsMap: Record<string, string[]> = {
   'Apple': ['M4 Max', 'M4 Pro', 'M4', 'M3 Max', 'M3 Pro', 'M3', 'M2 Ultra', 'M2 Max', 'M2 Pro', 'M2', 'M1 Ultra', 'M1 Max', 'M1 Pro', 'M1', 'Intel Core i9', 'Intel Core i7', 'Intel Core i5'],
 };
 
+const epsList = [
+  'Kaspersky', 'Microsoft', 'Symantec', 'McAfee', 'Trend Micro', 
+  'Sophos', 'CrowdStrike', 'SentinelOne', 'Bitdefender', 'ESET', 
+  'VMware', 'Palo Alto Networks', 'Cisco', 'Fortinet', 'Avast', 
+  'AVG', 'Malwarebytes', 'None'
+];
+
 const romList = ['128GB', '240GB', '256GB', '480GB', '500GB', '512GB', '1TB', '2TB'];
 const printerList = ['Epson L3110', 'Epson L3210', 'Brother L210'];
 
 export default function InventoryPage() {
   const [activeCategory, setActiveCategory] = useState('Personal Computer');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedExportDept, setSelectedExportDept] = useState('All Departments'); 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -99,7 +107,7 @@ export default function InventoryPage() {
     ms_office_version: 'Home & Business 2021', ms_office_status: 'Active', 
     processor_brand: 'Intel', processor_gen: '10th Gen', 
     processor_cpu: 'Core i5', processor_model: '', ram: '8GB', rom: '256GB', 
-    storage_drive: 'SSD', kaspersky: 'Active', 
+    storage_drive: 'SSD', kaspersky: 'Kaspersky', 
     phone: 'No', phone_connection_type: 'Local', phone_type: 'Landline', phone_number: '', 
     printer: 'No', printer_name: 'Epson L3110', 
     backup: 'No', backup_schedule: 'Daily', 
@@ -144,6 +152,7 @@ export default function InventoryPage() {
 
       if (error) throw error;
       setInventoryList(data || []);
+      setSelectedExportDept('All Departments'); 
     } catch (error: any) {
       console.error("Error fetching data:", error.message);
       setInventoryList([]);
@@ -155,6 +164,16 @@ export default function InventoryPage() {
   useEffect(() => {
     if (user) fetchData();
   }, [activeCategory, user]);
+
+  // --- AUTHENTICATION HELPER ---
+  const verifyPassword = async (password: string) => {
+    if (!user?.email) return false;
+    const { error } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: password,
+    });
+    return !error;
+  };
 
   const handleSaveRecord = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -214,9 +233,18 @@ export default function InventoryPage() {
     }
   };
 
+  const getDataToExport = () => {
+    let dataToExport = filteredData;
+    if (selectedExportDept !== 'All Departments') {
+      dataToExport = dataToExport.filter(item => item.department?.toUpperCase() === selectedExportDept.toUpperCase());
+    }
+    return dataToExport;
+  };
+
   const handleExportExcel = () => {
-    if (filteredData.length === 0) {
-      Swal.fire('Info', 'No data to export', 'info');
+    const dataToExport = getDataToExport();
+    if (dataToExport.length === 0) {
+      Swal.fire('Info', 'No data to export for this selection', 'info');
       return;
     }
 
@@ -224,10 +252,10 @@ export default function InventoryPage() {
 
     // Define Headers
     const headers = activeCategory === 'Personal Computer'
-      ? ["Building", "Department", "User Full Name", "Computer Type", "Email", "Device Name", "OS Edition", "OS Version", "Status", "MS Office Version", "MS Office Status", "Processor Brand", "Processor Gen", "Processor CPU", "Processor Model", "RAM", "ROM/Capacity", "Storage Drive", "Kaspersky", "Phone Connected", "Phone Conn Type", "Phone Type", "Phone Number", "Printer Connected", "Printer Name", "Backup Configured", "Backup Schedule"]
+      ? ["Building", "Department", "User Full Name", "Computer Type", "Email", "Device Name", "OS Edition", "OS Version", "Status", "MS Office Version", "MS Office Status", "Processor Brand", "Processor Gen", "Processor CPU", "Processor Model", "RAM", "ROM/Capacity", "Storage Drive", "EPS", "Phone Connected", "Phone Conn Type", "Phone Type", "Phone Number", "Printer Connected", "Printer Name", "Backup Configured", "Backup Schedule"]
       : ["Item Name", "Brand/Model", "User", "Quantity", "Unit", "Status", "Location"];
 
-    const tableData = filteredData.map(item => {
+    const tableData = dataToExport.map(item => {
       if (activeCategory === 'Personal Computer') {
         const isPhone = item.phone?.toLowerCase() === 'yes';
         return [
@@ -261,12 +289,15 @@ export default function InventoryPage() {
     });
 
     worksheet['!cols'] = colWidths;
-    XLSX.writeFile(workbook, `MVC_Inventory_${activeCategory.replace(/ /g, '_')}.xlsx`);
+    
+    const fileNameSuffix = selectedExportDept === 'All Departments' ? '' : `_${selectedExportDept.replace(/ /g, '_')}`;
+    XLSX.writeFile(workbook, `MVC_Inventory_${activeCategory.replace(/ /g, '_')}${fileNameSuffix}.xlsx`);
   };
 
   const handleExportPDF = () => {
-    if (filteredData.length === 0) {
-      Swal.fire('Info', 'No data to export', 'info');
+    const dataToExport = getDataToExport();
+    if (dataToExport.length === 0) {
+      Swal.fire('Info', 'No data to export for this selection', 'info');
       return;
     }
 
@@ -274,15 +305,15 @@ export default function InventoryPage() {
     doc.setFontSize(18);
     doc.text("MABUHAY VINYL CORPORATION - ILIGAN PLANT", 14, 15);
     doc.setFontSize(11);
-    doc.text("Department: IT", 14, 22);
+    doc.text(`Department: ${selectedExportDept === 'All Departments' ? 'IT (All Records)' : selectedExportDept}`, 14, 22);
     doc.setFontSize(9);
     doc.text(`Inventory Report: ${activeCategory}`, 14, 28);
 
     const tableColumn = activeCategory === 'Personal Computer' 
-      ? ["Bldg", "Dept", "User", "Type", "Device", "OS", "Status", "Office Ver", "Office Stat", "CPU", "RAM", "Drive", "Kaspersky", "Printer", "Phone Type", "Phone #", "Backup"]
+      ? ["Bldg", "Dept", "User", "Type", "Device", "OS", "Status", "Office Ver", "Office Stat", "CPU", "RAM", "Drive", "EPS", "Printer", "Phone Type", "Phone #", "Backup"]
       : ["Item Name", "Brand/Model", "User", "Qty", "Unit", "Status", "Location"];
 
-    const tableRows = filteredData.map(item => {
+    const tableRows = dataToExport.map(item => {
         if (activeCategory === 'Personal Computer') {
            const isPhone = item.phone?.toLowerCase() === 'yes';
            return [
@@ -304,33 +335,66 @@ export default function InventoryPage() {
     });
 
     autoTable(doc, { head: [tableColumn], body: tableRows as any, startY: 30, styles: { fontSize: 7 }, headStyles: { fillColor: [127, 0, 0] } });
-    doc.save(`MVC_${activeCategory.replace(/ /g, '_')}.pdf`);
+    
+    const fileNameSuffix = selectedExportDept === 'All Departments' ? '' : `_${selectedExportDept.replace(/ /g, '_')}`;
+    doc.save(`MVC_Inventory_${activeCategory.replace(/ /g, '_')}${fileNameSuffix}.pdf`);
   };
 
-  const handleEdit = (item: InventoryItem) => {
-    setEditingId(item.id);
-    setFormData({ ...initialForm, ...item } as any);
-    setIsModalOpen(true);
+  const handleEdit = async (item: InventoryItem) => {
+    const { value: password } = await Swal.fire({
+      title: 'Authentication Required',
+      text: 'Enter your password to edit this record',
+      input: 'password',
+      inputPlaceholder: 'Enter your password',
+      inputAttributes: {
+        autocapitalize: 'off',
+        autocorrect: 'off'
+      },
+      showCancelButton: true,
+      confirmButtonColor: '#7f0000',
+    });
+
+    if (password) {
+      const isValid = await verifyPassword(password);
+      if (isValid) {
+        setEditingId(item.id);
+        setFormData({ ...initialForm, ...item } as any);
+        setIsModalOpen(true);
+      } else {
+        Swal.fire('Error', 'Incorrect password', 'error');
+      }
+    }
   };
 
   const handleDelete = async (id: string, name: string) => {
-    Swal.fire({
-      title: 'Are you sure?',
-      text: `Delete record of ${name}?`,
-      icon: 'warning',
+    const { value: password } = await Swal.fire({
+      title: 'Authentication Required',
+      text: `Enter your password to delete the record for ${name}`,
+      input: 'password',
+      inputPlaceholder: 'Enter your password',
+      inputAttributes: {
+        autocapitalize: 'off',
+        autocorrect: 'off'
+      },
       showCancelButton: true,
       confirmButtonColor: '#7f0000',
-      confirmButtonText: 'Yes, delete it!'
-    }).then(async (result) => {
-      if (result.isConfirmed) {
+      confirmButtonText: 'Verify & Delete'
+    });
+
+    if (password) {
+      const isValid = await verifyPassword(password);
+      if (isValid) {
         try {
           await supabase.from(getTableName(activeCategory)).delete().eq('id', id).eq('user_id', user.id);
           fetchData();
+          Swal.fire('Deleted!', 'The record has been deleted.', 'success');
         } catch (error: any) {
           Swal.fire('Error', error.message, 'error');
         }
+      } else {
+        Swal.fire('Error', 'Incorrect password', 'error');
       }
-    });
+    }
   };
 
   const handleLogout = async () => {
@@ -345,15 +409,20 @@ export default function InventoryPage() {
   const filteredData = inventoryList.filter(item => 
     (item.user_full_name || item.item_name || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
+  
+  // Extract unique departments for the filter dropdown
+  const uniqueDepartments = Array.from(new Set(inventoryList.map(item => item.department?.toUpperCase()).filter(Boolean)));
 
   return (
-    <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden relative text-[11px]">
+    <div className="flex h-[100dvh] bg-slate-50 text-slate-900 font-sans overflow-hidden relative text-[11px]">
       
+      {/* OVERLAY */}
       {isSidebarOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 z-30 lg:hidden backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />
+        <div className="fixed inset-0 bg-slate-900/50 z-[60] lg:hidden backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-40 w-64 border-r border-slate-200 bg-white flex flex-col shrink-0 transition-transform duration-300 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}>
+      {/* SIDEBAR */}
+      <aside className={`fixed inset-y-0 left-0 z-[70] w-64 border-r border-slate-200 bg-white flex flex-col shrink-0 transition-transform duration-300 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}>
         <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-red-900 rounded flex items-center justify-center shadow-md">
@@ -384,8 +453,9 @@ export default function InventoryPage() {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-6 shrink-0 z-10 sticky top-0">
+      <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
+        {/* MAIN HEADER */}
+        <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-6 shrink-0 z-50 sticky top-0">
           <div className="flex items-center gap-3">
             <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 rounded-md lg:hidden hover:bg-slate-100 text-slate-600"><Menu size={20} /></button>
             <h1 className="text-sm md:text-lg font-bold tracking-tight">Inventory Management</h1>
@@ -396,162 +466,183 @@ export default function InventoryPage() {
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto p-4 md:p-8 flex flex-col custom-scrollbar">
-          <div className="space-y-6 flex-1">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div className="flex bg-white border border-slate-200 rounded-lg p-1.5 shadow-sm w-fit gap-1">
-                <TabBtn label="Personal Computer" active={activeCategory === 'Personal Computer'} onClick={() => setActiveCategory('Personal Computer')} />
-                <TabBtn label="Computer Parts" active={activeCategory === 'Computer Parts'} onClick={() => setActiveCategory('Computer Parts')} />
-              </div>
-
-              <div className="flex gap-2 w-full sm:w-auto">
-                <button onClick={handleExportPDF} className="flex-1 sm:flex-none flex items-center justify-center border border-red-200 gap-2 px-4 py-2 bg-red-50 text-red-800 text-[10px] font-bold rounded-lg hover:bg-red-100 transition-all shadow-sm"><Download size={14} /> PDF</button>
-                <button onClick={handleExportExcel} className="flex-1 sm:flex-none flex items-center justify-center border border-emerald-200 gap-2 px-4 py-2 bg-emerald-50 text-emerald-800 text-[10px] font-bold rounded-lg hover:bg-emerald-100 transition-all shadow-sm"><Download size={14} /> Excel</button>
-                <button onClick={() => { setEditingId(null); setFormData(initialForm); setIsModalOpen(true); }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-red-900 text-white text-[10px] font-bold rounded-lg shadow-md active:scale-95 transition-all"><Plus size={14} /> Add Record</button>
-              </div>
+        {/* --- MAIN CONTENT AREA (Isolated Scroll) --- */}
+        <div className="flex-1 flex flex-col p-4 md:p-8 gap-4 min-h-0 relative z-0">
+          
+          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 shrink-0">
+            {/* TABS CONTAINER */}
+            <div className="flex bg-white border border-slate-200 rounded-lg p-1.5 shadow-sm w-full sm:w-fit gap-1 shrink-0">
+              <TabBtn label="Personal Computer" active={activeCategory === 'Personal Computer'} onClick={() => setActiveCategory('Personal Computer')} />
+              <TabBtn label="Computer Parts" active={activeCategory === 'Computer Parts'} onClick={() => setActiveCategory('Computer Parts')} />
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-              <div className="overflow-x-auto custom-scrollbar">
-                <table className="w-full text-left text-slate-600 whitespace-nowrap min-w-max border-collapse">
-                  
-                  <thead className="bg-blue-50/50 font-bold border-b border-slate-200 uppercase text-slate-600 text-[10px] text-center">
-                    {activeCategory === 'Personal Computer' ? (
-                      <>
-                        <tr>
-                          <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">BUILDING</th>
-                          <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">DEPARTMENT / OFFICE</th>
-                          <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 bg-white sticky left-0 z-20 shadow-sm text-slate-900 align-middle">USER &quot;Full Name&quot;</th>
-                          <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">COMP. TYPE</th>
-                          <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">EMAIL</th>
-                          <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">DEVICE NAME</th>
-                          <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center">Windos SPICIFICATION</th>
-                          <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">STATUS</th>
-                          <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center">MS OFFICE</th>
-                          <th colSpan={4} className="px-3 py-2 border-r border-b border-slate-200 text-center">PROCESSOR</th>
-                          <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">RAM</th>
-                          <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">ROM / Capacity</th>
-                          <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">Storage drive</th>
-                          <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">KASPERSKY</th>
-                          <th colSpan={3} className="px-3 py-2 border-r border-b border-slate-200 text-center">PHONE</th>
-                          <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center">PRINTER</th>
-                          <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center">BACKUP</th>
-                          <th rowSpan={2} className="px-4 py-3 text-center sticky right-0 bg-slate-50 border-l shadow-sm align-middle z-20">Actions</th>
-                        </tr>
-                        <tr>
-                          {/* WINDOWS */}
-                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">EDITION</th>
-                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">VERSION</th>
-                          {/* MS OFFICE */}
-                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">VERSION</th>
-                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">STATUS</th>
-                          {/* PROCESSOR */}
-                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">BRAND</th>
-                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">generation</th>
-                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">CPU</th>
-                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">model number</th>
-                          {/* PHONE: Added Connection Type */}
-                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Conn. Type</th>
-                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Type</th>
-                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Number</th>
-                          {/* PRINTER */}
-                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Conn.</th>
-                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Name</th>
-                          {/* BACKUP */}
-                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Config.</th>
-                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Schedule</th>
-                        </tr>
-                      </>
-                    ) : (
-                      <tr>
-                        <th className="px-4 py-4 border-r border-slate-100 align-middle">Item Name</th>
-                        <th className="px-4 py-4 border-r border-slate-100 align-middle">Brand</th>
-                        <th className="px-4 py-4 border-r border-slate-100 bg-white sticky left-0 z-10 shadow-sm text-slate-900 text-left align-middle">User</th>
-                        <th className="px-4 py-4 border-r border-slate-100 align-middle">Qty</th>
-                        <th className="px-4 py-4 border-r border-slate-100 align-middle">Status</th>
-                        <th className="px-4 py-4 border-r border-slate-100 align-middle">Location</th>
-                        <th className="px-4 py-4 text-center sticky right-0 bg-slate-50 border-l shadow-sm align-middle">Actions</th>
-                      </tr>
-                    )}
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-center">
-                    {loading ? (
-                      <tr><td colSpan={27} className="p-20 text-center"><Loader2 className="animate-spin inline text-red-900" size={32}/></td></tr>
-                    ) : filteredData.length > 0 ? (
-                      filteredData.map((item) => (
-                        <tr key={item.id} className="hover:bg-slate-50/80 transition-colors group text-slate-700">
-                          {activeCategory === 'Personal Computer' ? (
-                            <>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.building}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.department}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 font-bold text-slate-900 bg-white sticky left-0 z-10 transition-colors group-hover:bg-slate-50 uppercase">{item.user_full_name}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 font-semibold uppercase">{item.computer_type}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 text-blue-600 uppercase">{item.email}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 font-bold uppercase">{item.device_name}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.os_edition}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.os_version}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.status}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.ms_office_version}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">
-                                <span className={`px-2 py-0.5 rounded-full font-bold border-slate-50 ${item.ms_office_status?.toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{item.ms_office_status}</span>
-                              </td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.processor_brand}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.processor_gen}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.processor_cpu}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.processor_model}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 font-medium uppercase">{item.ram}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 font-medium text-blue-800 uppercase">{item.rom}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.storage_drive}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">
-                                <span className={`px-2 py-0.5 rounded-full font-bold border-slate-50 ${item.kaspersky?.toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{item.kaspersky}</span>
-                              </td>
-                              
-                              {/* PHONE DATA RENDERING */}
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.phone?.toLowerCase() === 'yes' ? item.phone_connection_type : '-'}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.phone?.toLowerCase() === 'yes' ? item.phone_type : '-'}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.phone?.toLowerCase() === 'yes' ? item.phone_number : '-'}</td>
-                              
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.printer}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.printer?.toLowerCase() === 'yes' ? item.printer_name : '-'}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.backup}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.backup?.toLowerCase() === 'yes' ? item.backup_schedule : '-'}</td>
-                            </>
-                          ) : (
-                            <>
-                              <td className="px-4 py-3.5 border-r border-slate-50 font-bold text-slate-900 text-left uppercase">{item.item_name}</td>
-                              <td className="px-4 border-slate-50 py-3.5 border-r text-left uppercase">{item.brand_model}</td>
-                              <td className="px-4 py-3.5 border-r border-slate-50 bg-white sticky left-0 z-10 group-hover:bg-slate-50 text-left font-semibold uppercase">{item.user_full_name || 'N/A'}</td>
-                              <td className="px-4 py-3.5 border-r border-slate-50 font-bold text-blue-600 uppercase">{item.quantity} {item.unit}</td>
-                              <td className="px-4 py-3.5 border-r border-slate-50 uppercase"><span className={`px-2 py-0.5 rounded-full text-[10px] border-slate-50 font-bold ${item.status === 'New' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'}`}>{item.status}</span></td>
-                              <td className="px-4 py-3.5 border-r border-slate-50 italic text-slate-500 uppercase">{item.location}</td>
-                            </>
-                          )}
-                          <td className="px-4 py-3.5 text-center sticky right-0 bg-white group-hover:bg-slate-50 border-l border-slate-100 shadow-sm z-10">
-                            <div className="flex gap-1 justify-center">
-                              <button onClick={() => handleEdit(item)} className="p-1 text-slate-400 hover:text-blue-600 transition-all"><Edit size={14} /></button>
-                              <button onClick={() => handleDelete(item.id, item.user_full_name || item.item_name || "")} className="p-1 text-slate-400 hover:text-red-600 transition-all"><Trash2 size={14} /></button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr><td colSpan={27} className="p-10 text-center italic text-slate-400 uppercase text-[10px]">No records found</td></tr>
-                    )}
-                  </tbody>
-                </table>
+            {/* ACTION BUTTONS & FILTER CONTAINER */}
+            <div className="flex flex-col sm:flex-row gap-2 w-full xl:w-auto">
+              {/* --- DEPARTMENT EXPORT FILTER --- */}
+              <div className="flex items-center justify-center bg-white border border-slate-200 rounded-lg shadow-sm px-3 py-2 w-full sm:w-auto shrink-0">
+                 <Filter size={14} className="text-slate-400 mr-2 shrink-0" />
+                 <select 
+                   className="text-[10px] font-bold uppercase text-slate-600 outline-none bg-transparent cursor-pointer w-full sm:w-auto text-center sm:text-left"
+                   value={selectedExportDept}
+                   onChange={(e) => setSelectedExportDept(e.target.value)}
+                   style={{ textAlignLast: 'center' }}
+                 >
+                   <option value="All Departments">All Departments</option>
+                   {uniqueDepartments.map((dept, i) => (
+                     <option key={i} value={dept as string}>{dept}</option>
+                   ))}
+                 </select>
               </div>
+              
+              <button onClick={handleExportPDF} className="w-full sm:w-auto flex-1 flex items-center justify-center border border-red-200 gap-2 px-4 py-2 bg-red-50 text-red-800 text-[10px] font-bold rounded-lg hover:bg-red-100 transition-all shadow-sm whitespace-nowrap"><Download size={14} /> PDF</button>
+              <button onClick={handleExportExcel} className="w-full sm:w-auto flex-1 flex items-center justify-center border border-emerald-200 gap-2 px-4 py-2 bg-emerald-50 text-emerald-800 text-[10px] font-bold rounded-lg hover:bg-emerald-100 transition-all shadow-sm whitespace-nowrap"><Download size={14} /> Excel</button>
+              <button onClick={() => { setEditingId(null); setFormData(initialForm); setIsModalOpen(true); }} className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-900 text-white text-[10px] font-bold rounded-lg shadow-md active:scale-95 transition-all whitespace-nowrap"><Plus size={14} /> Add Record</button>
             </div>
           </div>
-          
-          <footer className="mt-6 py-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest border-t border-slate-200/80">
-            Developed by Christian B. Maglangit
-          </footer>
+
+          {/* --- STRICTLY CONFINED SCROLLING TABLE CONTAINER --- */}
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col flex-1 min-h-0 overflow-hidden relative z-0">
+            <div className="flex-1 overflow-auto custom-scrollbar relative">
+              <table className="w-full text-left text-slate-600 whitespace-nowrap min-w-max border-separate border-spacing-0">
+                
+                <thead className="sticky top-0 z-30 shadow-md shadow-slate-200/50">
+                  {activeCategory === 'Personal Computer' ? (
+                    <>
+                      <tr>
+                        <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">BUILDING</th>
+                        <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">DEPARTMENT / OFFICE</th>
+                        <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 sticky left-0 z-40 text-slate-900 align-middle bg-blue-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] font-bold uppercase text-[10px] text-center">USER &quot;Full Name&quot;</th>
+                        <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">COMP. TYPE</th>
+                        <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">EMAIL</th>
+                        <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">DEVICE NAME</th>
+                        <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center bg-blue-50 font-bold uppercase text-slate-600 text-[10px]">Windos SPICIFICATION</th>
+                        <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">STATUS</th>
+                        <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center bg-blue-50 font-bold uppercase text-slate-600 text-[10px]">MS OFFICE</th>
+                        <th colSpan={4} className="px-3 py-2 border-r border-b border-slate-200 text-center bg-blue-50 font-bold uppercase text-slate-600 text-[10px]">PROCESSOR</th>
+                        <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">RAM</th>
+                        <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">ROM / Capacity</th>
+                        <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">Storage drive</th>
+                        <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">EPS</th>
+                        <th colSpan={3} className="px-3 py-2 border-r border-b border-slate-200 text-center bg-blue-50 font-bold uppercase text-slate-600 text-[10px]">PHONE</th>
+                        <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center bg-blue-50 font-bold uppercase text-slate-600 text-[10px]">PRINTER</th>
+                        <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center bg-blue-50 font-bold uppercase text-slate-600 text-[10px]">BACKUP</th>
+                        <th rowSpan={2} className="px-4 py-3 border-b text-center sticky right-0 bg-blue-50 border-l border-slate-200 align-middle z-40 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)] font-bold uppercase text-slate-600 text-[10px]">Actions</th>
+                      </tr>
+                      <tr>
+                        {/* WINDOWS */}
+                        <th className="px-3 py-2 border-r border-b border-slate-200 bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">EDITION</th>
+                        <th className="px-3 py-2 border-r border-b border-slate-200 bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">VERSION</th>
+                        {/* MS OFFICE */}
+                        <th className="px-3 py-2 border-r border-b border-slate-200 bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">VERSION</th>
+                        <th className="px-3 py-2 border-r border-b border-slate-200 bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">STATUS</th>
+                        {/* PROCESSOR */}
+                        <th className="px-3 py-2 border-r border-b border-slate-200 bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">BRAND</th>
+                        <th className="px-3 py-2 border-r border-b border-slate-200 bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">generation</th>
+                        <th className="px-3 py-2 border-r border-b border-slate-200 bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">CPU</th>
+                        <th className="px-3 py-2 border-r border-b border-slate-200 bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">model number</th>
+                        {/* PHONE */}
+                        <th className="px-3 py-2 border-r border-b border-slate-200 bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">Conn. Type</th>
+                        <th className="px-3 py-2 border-r border-b border-slate-200 bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">Type</th>
+                        <th className="px-3 py-2 border-r border-b border-slate-200 bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">Number</th>
+                        {/* PRINTER */}
+                        <th className="px-3 py-2 border-r border-b border-slate-200 bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">Conn.</th>
+                        <th className="px-3 py-2 border-r border-b border-slate-200 bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">Name</th>
+                        {/* BACKUP */}
+                        <th className="px-3 py-2 border-r border-b border-slate-200 bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">Config.</th>
+                        <th className="px-3 py-2 border-r border-b border-slate-200 bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">Schedule</th>
+                      </tr>
+                    </>
+                  ) : (
+                    <tr>
+                      <th className="px-4 py-4 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">Item Name</th>
+                      <th className="px-4 py-4 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">Brand</th>
+                      <th className="px-4 py-4 border-r border-b border-slate-200 sticky left-0 z-40 text-slate-900 text-left align-middle bg-blue-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] font-bold uppercase text-[10px]">User</th>
+                      <th className="px-4 py-4 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">Qty</th>
+                      <th className="px-4 py-4 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">Status</th>
+                      <th className="px-4 py-4 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">Location</th>
+                      <th className="px-4 py-4 border-b text-center sticky right-0 bg-blue-50 border-l border-slate-200 align-middle z-40 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)] font-bold uppercase text-slate-600 text-[10px]">Actions</th>
+                    </tr>
+                  )}
+                </thead>
+                <tbody className="text-center relative z-0">
+                  {loading ? (
+                    <tr><td colSpan={27} className="p-20 text-center border-b border-slate-100"><Loader2 className="animate-spin inline text-red-900" size={32}/></td></tr>
+                  ) : filteredData.length > 0 ? (
+                    filteredData.map((item) => (
+                      <tr key={item.id} className="hover:bg-slate-50/80 transition-colors group text-slate-700">
+                        {activeCategory === 'Personal Computer' ? (
+                          <>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.building}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.department}</td>
+                            {/* Sticky Left Column */}
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 font-bold text-slate-900 sticky left-0 z-10 bg-white transition-colors group-hover:bg-slate-50 uppercase shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">{item.user_full_name}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 font-semibold uppercase">{item.computer_type}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 text-blue-600 uppercase">{item.email}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 font-bold uppercase">{item.device_name}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.os_edition}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.os_version}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.status}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.ms_office_version}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">
+                              <span className={`px-2 py-0.5 rounded-full font-bold border-slate-50 ${item.ms_office_status?.toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{item.ms_office_status}</span>
+                            </td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.processor_brand}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.processor_gen}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.processor_cpu}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.processor_model}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 font-medium uppercase">{item.ram}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 font-medium text-blue-800 uppercase">{item.rom}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.storage_drive}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.kaspersky}</td>
+                            
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.phone?.toLowerCase() === 'yes' ? item.phone_connection_type : '-'}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.phone?.toLowerCase() === 'yes' ? item.phone_type : '-'}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.phone?.toLowerCase() === 'yes' ? item.phone_number : '-'}</td>
+                            
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.printer}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.printer?.toLowerCase() === 'yes' ? item.printer_name : '-'}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.backup}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.backup?.toLowerCase() === 'yes' ? item.backup_schedule : '-'}</td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="px-4 py-3.5 border-r border-b border-slate-50 font-bold text-slate-900 text-left uppercase">{item.item_name}</td>
+                            <td className="px-4 py-3.5 border-r border-b border-slate-50 text-left uppercase">{item.brand_model}</td>
+                            {/* Sticky Left Column */}
+                            <td className="px-4 py-3.5 border-r border-b border-slate-50 bg-white sticky left-0 z-10 group-hover:bg-slate-50 text-left font-semibold uppercase shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">{item.user_full_name || 'N/A'}</td>
+                            <td className="px-4 py-3.5 border-r border-b border-slate-50 font-bold text-blue-600 uppercase">{item.quantity} {item.unit}</td>
+                            <td className="px-4 py-3.5 border-r border-b border-slate-50 uppercase"><span className={`px-2 py-0.5 rounded-full text-[10px] border-slate-50 font-bold ${item.status === 'New' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'}`}>{item.status}</span></td>
+                            <td className="px-4 py-3.5 border-r border-b border-slate-50 italic text-slate-500 uppercase">{item.location}</td>
+                          </>
+                        )}
+                        
+                        {/* Sticky Right Actions Column */}
+                        <td className="px-4 py-3.5 text-center sticky right-0 bg-white group-hover:bg-slate-50 border-l border-b border-slate-100 z-10 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                          <div className="flex gap-1 justify-center">
+                            <button onClick={() => handleEdit(item)} className="p-1 text-slate-400 hover:text-blue-600 transition-all"><Edit size={14} /></button>
+                            <button onClick={() => handleDelete(item.id, item.user_full_name || item.item_name || "")} className="p-1 text-slate-400 hover:text-red-600 transition-all"><Trash2 size={14} /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan={27} className="p-10 text-center border-b border-slate-100 italic text-slate-400 uppercase text-[10px]">No records found</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
+
+        {/* --- EXTRICATED FIXED FOOTER --- */}
+        <footer className="py-3 shrink-0 text-center bg-white text-[10px] font-bold text-slate-400 uppercase tracking-widest border-t border-slate-200 z-10 w-full shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)]">
+          Developed by Christian B. Maglangit
+        </footer>
       </main>
 
       {/* --- MODAL --- */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-sm transition-all text-[11px]">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-sm transition-all text-[11px]">
           <form onSubmit={handleSaveRecord} className="bg-white rounded-xl shadow-2xl w-full max-w-5xl border border-slate-200 overflow-hidden text-left flex flex-col max-h-[95vh]">
             <div className="px-6 py-4 border-b bg-slate-50 flex justify-between items-center font-bold text-slate-800 uppercase tracking-widest shrink-0">
                <h2 className="text-xs sm:text-sm">{editingId ? 'Edit' : 'New'} Record ({activeCategory})</h2>
@@ -579,7 +670,16 @@ export default function InventoryPage() {
                   ]} />
                   <InputGroup label="MS Office Status" value={formData.ms_office_status || 'Active'} onChange={(v) => setFormData({...formData, ms_office_status: v})} type="select" options={['Active', 'Not Active']} />
 
-                  <InputGroup label="Kaspersky" value={formData.kaspersky} onChange={(v) => setFormData({...formData, kaspersky: v})} type="select" options={['Active', 'Not Active']} />
+                  <InputGroup 
+                    label="EPS" 
+                    value={epsList.some(o => o.toUpperCase() === (formData.kaspersky || '').toUpperCase()) ? (epsList.find(o => o.toUpperCase() === (formData.kaspersky || '').toUpperCase()) || 'Kaspersky') : 'Others'} 
+                    onChange={(v) => setFormData({...formData, kaspersky: v === 'Others' ? '' : v})} 
+                    type="select" 
+                    options={[...epsList, 'Others']} 
+                  />
+                  {(!epsList.some(o => o.toUpperCase() === (formData.kaspersky || '').toUpperCase()) || formData.kaspersky === '') && (
+                    <InputGroup label="Specify EPS" placeholder="Ex: Custom Antivirus" value={formData.kaspersky || ''} onChange={(v) => setFormData({...formData, kaspersky: v})} required />
+                  )}
 
                   <div className="col-span-full font-bold text-slate-800 border-b pb-1 mb-2 mt-2">Processor Details</div>
                   
@@ -679,13 +779,13 @@ export default function InventoryPage() {
                     <>
                       <InputGroup 
                         label="Printer Name" 
-                        value={['Epson L3110', 'Epson L3210', 'Brother L210'].includes(formData.printer_name || '') ? formData.printer_name || 'Epson L3110' : 'Others'} 
+                        value={printerList.some(o => o.toUpperCase() === (formData.printer_name || '').toUpperCase()) ? (printerList.find(o => o.toUpperCase() === (formData.printer_name || '').toUpperCase()) || 'Epson L3110') : 'Others'} 
                         onChange={(v) => setFormData({...formData, printer_name: v === 'Others' ? '' : v})} 
                         type="select" 
-                        options={['Epson L3110', 'Epson L3210', 'Brother L210', 'Others']} 
+                        options={[...printerList, 'Others']} 
                       />
                       {/* CUSTOM PRINTER NAME FIELD IF 'OTHERS' IS SELECTED */}
-                      {(!['Epson L3110', 'Epson L3210', 'Brother L210'].includes(formData.printer_name || '') || formData.printer_name === '') && (
+                      {(!printerList.some(o => o.toUpperCase() === (formData.printer_name || '').toUpperCase()) || formData.printer_name === '') && (
                         <InputGroup label="Specify Printer" placeholder="Ex: HP DeskJet" value={formData.printer_name || ''} onChange={(v) => setFormData({...formData, printer_name: v})} required />
                       )}
                     </>
@@ -716,12 +816,20 @@ export default function InventoryPage() {
                 </>
               )}
             </div>
-            <div className="px-6 py-4 border-t bg-slate-50 flex justify-end gap-3 shrink-0">
-              <button type="button" onClick={() => setIsModalOpen(false)} className="text-[10px] font-bold text-slate-500 uppercase px-4 hover:text-slate-800 transition-colors">Cancel</button>
-              <button disabled={isSaving} type="submit" className={`px-10 py-2.5 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg ${editingId ? 'bg-blue-600 shadow-blue-900/20' : 'bg-red-900 shadow-red-900/20'}`}>
-                {isSaving ? <Loader2 className="animate-spin" size={14} /> : "Save Record"}
-              </button>
+            
+            {/* MODAL FOOTER WITH CENTERED TEXT */}
+            <div className="px-6 py-4 border-t bg-slate-50 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0 relative">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest sm:absolute sm:left-1/2 sm:-translate-x-1/2">
+                Developed by Christian B. Maglangit
+              </span>
+              <div className="flex justify-end gap-3 w-full sm:w-auto sm:ml-auto">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="text-[10px] font-bold text-slate-500 uppercase px-4 hover:text-slate-800 transition-colors">Cancel</button>
+                <button disabled={isSaving} type="submit" className={`px-10 py-2.5 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg ${editingId ? 'bg-blue-600 shadow-blue-900/20' : 'bg-red-900 shadow-red-900/20'}`}>
+                  {isSaving ? <Loader2 className="animate-spin" size={14} /> : "Save Record"}
+                </button>
+              </div>
             </div>
+
           </form>
         </div>
       )}

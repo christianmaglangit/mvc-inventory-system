@@ -141,7 +141,7 @@ export default function SummaryDashboard() {
           </div>
         </header>
 
-        {/* Added flex flex-col to allow the footer to push to the bottom */}
+        {/* --- SCROLLING CONTENT AREA --- */}
         <div className="flex-1 overflow-auto p-4 md:p-8 flex flex-col custom-scrollbar">
           <div className="space-y-6 flex-1">
             {loading ? (
@@ -181,12 +181,12 @@ export default function SummaryDashboard() {
               </>
             )}
           </div>
-          
-          {/* --- ADDED FOOTER HERE --- */}
-          <footer className="mt-12 py-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest border-t border-slate-200/80">
-            Developed by Christian B. Maglangit
-          </footer>
         </div>
+        
+        {/* --- EXTRICATED FIXED FOOTER --- */}
+        <footer className="py-3 shrink-0 text-center bg-white text-[10px] font-bold text-slate-400 uppercase tracking-widest border-t border-slate-200 z-10 w-full shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)]">
+          Developed by Christian B. Maglangit
+        </footer>
       </main>
     </div>
   );
