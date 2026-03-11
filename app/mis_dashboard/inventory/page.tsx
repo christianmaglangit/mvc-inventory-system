@@ -11,6 +11,7 @@ import {
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Swal from 'sweetalert2'; 
+import * as XLSX from 'xlsx'; // <-- ADDED XLSX IMPORT
 
 // --- Interfaces ---
 interface InventoryItem {
@@ -31,7 +32,7 @@ interface InventoryItem {
   processor_cpu?: string;
   processor_model?: string;
   ram: string;
-  rom?: string; // Serves as the Capacity now
+  rom?: string; 
   storage_drive?: string;
   kaspersky: string;
   phone?: string;
@@ -97,11 +98,6 @@ export default function InventoryPage() {
 
   const [formData, setFormData] = useState(initialForm);
   const router = useRouter();
-
-  const toTitleCase = (str: string) => {
-    if (!str) return "";
-    return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-  };
 
   const getTableName = (cat: string) => {
     const map: Record<string, string> = {
@@ -198,52 +194,53 @@ export default function InventoryPage() {
       return;
     }
 
-    let csvContent = "data:text/csv;charset=utf-8,";
-
-    // Define Headers
+    // 1. Define Headers and Row Data
     const headers = activeCategory === 'Personal Computer'
       ? ["Building", "Department", "User Full Name", "Computer Type", "Email", "Device Name", "OS Edition", "OS Version", "Status", "MS Office", "Processor Brand", "Processor Gen", "Processor CPU", "Processor Model", "RAM", "ROM/Capacity", "Storage Drive", "Kaspersky", "Phone Connected", "Phone Number", "Printer Connected", "Printer Name"]
       : ["Item Name", "Brand/Model", "User", "Quantity", "Unit", "Status", "Location"];
 
-    csvContent += headers.join(",") + "\r\n";
-
-    // Define Rows
-    filteredData.forEach(item => {
-      let row: any[] = [];
-
+    const tableData = filteredData.map(item => {
       if (activeCategory === 'Personal Computer') {
-        row = [
-          item.building, item.department, item.user_full_name, item.computer_type,
-          item.email, item.device_name, item.os_edition, item.os_version, item.status,
-          item.ms_office_version, item.processor_brand, item.processor_gen, item.processor_cpu,
-          item.processor_model, item.ram, item.rom, item.storage_drive, item.kaspersky,
-          item.phone, item.phone === 'Yes' ? item.phone_number : "None",
-          item.printer, item.printer === 'Yes' ? item.printer_name : "None"
+        return [
+          item.building || "", item.department || "", item.user_full_name || "", item.computer_type || "",
+          item.email || "", item.device_name || "", item.os_edition || "", item.os_version || "", item.status || "",
+          item.ms_office_version || "", item.processor_brand || "", item.processor_gen || "", item.processor_cpu || "",
+          item.processor_model || "", item.ram || "", item.rom || "", item.storage_drive || "", item.kaspersky || "",
+          item.phone || "", item.phone === 'Yes' ? item.phone_number || "" : "None",
+          item.printer || "", item.printer === 'Yes' ? item.printer_name || "" : "None"
         ];
       } else {
-        row = [
-          item.item_name, item.brand_model, item.user_full_name || "N/A",
-          item.quantity || "0", item.unit, item.status, item.location
+        return [
+          item.item_name || "", item.brand_model || "", item.user_full_name || "N/A",
+          item.quantity || "0", item.unit || "", item.status || "", item.location || ""
         ];
       }
-
-      // Escape quotes and wrap in quotes to handle commas within values
-      const escapedRow = row.map(value => {
-        const strVal = String(value || "");
-        return `"${strVal.replace(/"/g, '""')}"`;
-      });
-
-      csvContent += escapedRow.join(",") + "\r\n";
     });
 
-    // Create Download Link
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `MVC_Inventory_${activeCategory.replace(/ /g, '_')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // 2. Combine headers and data
+    const finalData = [headers, ...tableData];
+
+    // 3. Create Worksheet and Workbook
+    const worksheet = XLSX.utils.aoa_to_sheet(finalData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, activeCategory.substring(0, 31)); // sheet names max 31 chars
+
+    // 4. Auto-size columns based on the content
+    const colWidths = headers.map((header, index) => {
+      // Find the maximum length of text in this column
+      const maxLength = finalData.reduce((max, row) => {
+        const cellValue = row[index] ? row[index].toString() : "";
+        return Math.max(max, cellValue.length);
+      }, header.length);
+      
+      // Add a little extra padding (e.g., 2 characters) for breathing room
+      return { wch: maxLength + 2 };
+    });
+
+    worksheet['!cols'] = colWidths;
+
+    // 5. Download the file
+    XLSX.writeFile(workbook, `MVC_Inventory_${activeCategory.replace(/ /g, '_')}.xlsx`);
   };
 
   const handleExportPDF = () => {
@@ -377,7 +374,6 @@ export default function InventoryPage() {
             </div>
 
             <div className="flex gap-2 w-full sm:w-auto">
-              {/* --- ADDED PDF AND EXCEL BUTTONS --- */}
               <button onClick={handleExportPDF} className="flex-1 sm:flex-none flex items-center justify-center border border-red-200 gap-2 px-4 py-2 bg-red-50 text-red-800 text-[10px] font-bold rounded-lg hover:bg-red-100 transition-all shadow-sm"><Download size={14} /> PDF</button>
               <button onClick={handleExportExcel} className="flex-1 sm:flex-none flex items-center justify-center border border-emerald-200 gap-2 px-4 py-2 bg-emerald-50 text-emerald-800 text-[10px] font-bold rounded-lg hover:bg-emerald-100 transition-all shadow-sm"><Download size={14} /> Excel</button>
               <button onClick={() => { setEditingId(null); setFormData(initialForm); setIsModalOpen(true); }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-red-900 text-white text-[10px] font-bold rounded-lg shadow-md active:scale-95 transition-all"><Plus size={14} /> Add Record</button>
@@ -560,7 +556,20 @@ export default function InventoryPage() {
 
                   <div className="col-span-full font-bold text-slate-800 border-b pb-1 mb-2 mt-2">Storage & Memory</div>
                   <InputGroup label="RAM" value={formData.ram} onChange={(v) => setFormData({...formData, ram: v})} type="select" options={['4GB', '8GB', '16GB', '32GB', '64GB']} />
-                  <InputGroup label="ROM / Capacity" value={formData.rom || ''} onChange={(v) => setFormData({...formData, rom: v})} type="select" options={['128GB', '240GB', '256GB', '480GB', '500GB', '512GB', '1TB', '2TB']} />
+                  
+                  {/* ROM/CAPACITY SELECT */}
+                  <InputGroup 
+                    label="ROM / Capacity" 
+                    value={['128GB', '240GB', '256GB', '480GB', '500GB', '512GB', '1TB', '2TB'].includes(formData.rom || '') ? formData.rom || '256GB' : 'Others'} 
+                    onChange={(v) => setFormData({...formData, rom: v === 'Others' ? '' : v})} 
+                    type="select" 
+                    options={['128GB', '240GB', '256GB', '480GB', '500GB', '512GB', '1TB', '2TB', 'Others']} 
+                  />
+                  {/* CUSTOM ROM FIELD IF 'OTHERS' IS SELECTED (or if it holds a custom value not in the list) */}
+                  {(!['128GB', '240GB', '256GB', '480GB', '500GB', '512GB', '1TB', '2TB'].includes(formData.rom || '') || formData.rom === '') && (
+                    <InputGroup label="Specify Capacity" placeholder="Ex: 4TB" value={formData.rom || ''} onChange={(v) => setFormData({...formData, rom: v})} required />
+                  )}
+
                   <InputGroup label="Storage Drive" value={formData.storage_drive || ''} onChange={(v) => setFormData({...formData, storage_drive: v})} type="select" options={['SSD', 'HDD', 'NVMe', 'M.2']} />
                   
                   <div className="col-span-full font-bold text-slate-800 border-b pb-1 mb-2 mt-2">Peripherals</div>
@@ -570,8 +579,22 @@ export default function InventoryPage() {
                   )}
                   
                   <InputGroup label="Printer Connected?" value={formData.printer || 'No'} onChange={(v) => setFormData({...formData, printer: v})} type="select" options={['Yes', 'No']} />
+                  
+                  {/* PRINTER NAME: SHOW ONLY IF PRINTER IS YES */}
                   {formData.printer === 'Yes' && (
-                    <InputGroup label="Printer Name" placeholder="Ex: Epson L3110" value={formData.printer_name || ''} onChange={(v) => setFormData({...formData, printer_name: v})} required />
+                    <>
+                      <InputGroup 
+                        label="Printer Name" 
+                        value={['Epson L3110', 'Epson L3210', 'Brother L210'].includes(formData.printer_name || '') ? formData.printer_name || 'Epson L3110' : 'Others'} 
+                        onChange={(v) => setFormData({...formData, printer_name: v === 'Others' ? '' : v})} 
+                        type="select" 
+                        options={['Epson L3110', 'Epson L3210', 'Brother L210', 'Others']} 
+                      />
+                      {/* CUSTOM PRINTER NAME FIELD IF 'OTHERS' IS SELECTED */}
+                      {(!['Epson L3110', 'Epson L3210', 'Brother L210'].includes(formData.printer_name || '') || formData.printer_name === '') && (
+                        <InputGroup label="Specify Printer" placeholder="Ex: HP DeskJet" value={formData.printer_name || ''} onChange={(v) => setFormData({...formData, printer_name: v})} required />
+                      )}
+                    </>
                   )}
                   
                 </>
