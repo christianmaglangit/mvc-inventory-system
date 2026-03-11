@@ -561,10 +561,10 @@ export default function InventoryPage() {
               {activeCategory === 'Personal Computer' ? (
                 <>
                   <div className="col-span-full font-bold text-slate-800 border-b pb-1 mb-2">User & Device Info</div>
-                  <InputGroup label="Building" value={formData.building} onChange={(v) => setFormData({...formData, building: v})} type="select" options={['Admin', 'Security', 'IEM 1', 'IEM 2', 'QC', 'CONTRACTOR',]} />
-                  <InputGroup label="Department" value={formData.department} onChange={(v) => setFormData({...formData, department: v})} type="select" options={['MIS', 'HR', 'TECHNICAL', 'EHS', 'ENGINEERING', 'MATERIALS', 'MARKETING & SALES', 'FINANCE & ACCOUNTING', 'SECURITY', 'IEM 1', 'IEM 2', 'QC', 'CONTRACTOR', ]} />
+                  <InputGroup label="Building" value={formData.building} onChange={(v) => setFormData({...formData, building: v})} type="select" options={['Admin', 'Security', 'IEM 1', 'IEM 2', 'QC', 'LCP', '69 KB Sub Station', 'Boiler / Demi', 'Contractor',]} />
+                  <InputGroup label="Department" value={formData.department} onChange={(v) => setFormData({...formData, department: v})} type="select" options={['President Office', 'VP - Office', 'MIS', 'HRD', 'TECHNICAL', 'EHS', 'ENGINEERING', 'MATERIALS', 'MARKETING & SALES', 'FINANCE & ACCOUNTING', 'SECURITY', 'IEM 1', 'IEM 2', 'QC', 'AVP', 'SHIFT MANAGERS', 'CONTRACTOR', ]} />
                   <InputGroup label="User Name" placeholder="Ex: Juan Dela Cruz" value={formData.user_full_name} onChange={(v) => setFormData({...formData, user_full_name: v})} required />
-                  <InputGroup label="Computer Type" value={formData.computer_type || 'Desktop'} onChange={(v) => setFormData({...formData, computer_type: v})} type="select" options={['Desktop', 'NUC', 'Laptop']} />
+                  <InputGroup label="Computer Type" value={formData.computer_type || 'Desktop'} onChange={(v) => setFormData({...formData, computer_type: v})} type="select" options={['Desktop', 'NUC', 'NUC Dell', 'NUC HP', 'NUC Intel', 'Laptop']} />
                   <InputGroup label="Email" placeholder="user@domain.com" value={formData.email || ''} onChange={(v) => setFormData({...formData, email: v})} />
                   <InputGroup label="Device Name" placeholder="PC-01" value={formData.device_name || ''} onChange={(v) => setFormData({...formData, device_name: v})} />
                   <InputGroup label="Status" value={formData.status || ''} onChange={(v) => setFormData({...formData, status: v})} type="select" options={['Active', 'Inactive', 'Defective', 'Spare']} />
