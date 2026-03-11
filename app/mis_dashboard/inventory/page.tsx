@@ -27,6 +27,7 @@ interface InventoryItem {
   os_version?: string;
   status?: string;
   ms_office_version: string;
+  ms_office_status?: string; // <-- ADDED MS OFFICE STATUS
   processor_brand?: string;
   processor_gen?: string;
   processor_cpu?: string;
@@ -39,6 +40,8 @@ interface InventoryItem {
   phone_number?: string;
   printer?: string;
   printer_name?: string;
+  backup?: string; 
+  backup_schedule?: string; 
   
   // Computer Parts
   item_name?: string;
@@ -88,10 +91,12 @@ export default function InventoryPage() {
   const initialForm = {
     building: 'Admin', department: 'MIS', user_full_name: '', computer_type: 'Desktop', email: '', device_name: '',
     os_edition: 'Windows 10 Pro', os_version: '', status: 'Active',
-    ms_office_version: 'Home & Business 2021', processor_brand: 'Intel', processor_gen: '10th Gen', 
+    ms_office_version: 'Home & Business 2021', ms_office_status: 'Active', // ADDED MS OFFICE STATUS
+    processor_brand: 'Intel', processor_gen: '10th Gen', 
     processor_cpu: 'Core i5', processor_model: '', ram: '8GB', rom: '256GB', 
     storage_drive: 'SSD', kaspersky: 'Active', 
     phone: 'No', phone_number: '', printer: 'No', printer_name: '',
+    backup: 'No', backup_schedule: '', 
     // Parts Form Fields
     item_name: 'Monitor', brand_model: 'Dell', serial_number: '', quantity: 1, unit: 'Pcs', location: 'MIS STORAGE'
   };
@@ -159,12 +164,13 @@ export default function InventoryPage() {
           user_full_name: formData.user_full_name, computer_type: formData.computer_type, email: formData.email,
           device_name: formData.device_name, os_edition: formData.os_edition, 
           os_version: formData.os_version, status: formData.status, 
-          ms_office_version: formData.ms_office_version, processor_brand: formData.processor_brand, 
-          processor_gen: formData.processor_gen, processor_cpu: formData.processor_cpu, 
+          ms_office_version: formData.ms_office_version, ms_office_status: formData.ms_office_status, // ADDED MS OFFICE STATUS
+          processor_brand: formData.processor_brand, processor_gen: formData.processor_gen, processor_cpu: formData.processor_cpu, 
           processor_model: formData.processor_model, ram: formData.ram, rom: formData.rom, 
           storage_drive: formData.storage_drive, kaspersky: formData.kaspersky, 
           phone: formData.phone, phone_number: formData.phone === 'Yes' ? formData.phone_number : '',
-          printer: formData.printer, printer_name: formData.printer === 'Yes' ? formData.printer_name : ''
+          printer: formData.printer, printer_name: formData.printer === 'Yes' ? formData.printer_name : '',
+          backup: formData.backup, backup_schedule: formData.backup === 'Yes' ? formData.backup_schedule : '' 
         };
       } else {
         payload = { ...payload,
@@ -203,7 +209,7 @@ export default function InventoryPage() {
 
     // Define Headers
     const headers = activeCategory === 'Personal Computer'
-      ? ["Building", "Department", "User Full Name", "Computer Type", "Email", "Device Name", "OS Edition", "OS Version", "Status", "MS Office", "Processor Brand", "Processor Gen", "Processor CPU", "Processor Model", "RAM", "ROM/Capacity", "Storage Drive", "Kaspersky", "Phone Connected", "Phone Number", "Printer Connected", "Printer Name"]
+      ? ["Building", "Department", "User Full Name", "Computer Type", "Email", "Device Name", "OS Edition", "OS Version", "Status", "MS Office Version", "MS Office Status", "Processor Brand", "Processor Gen", "Processor CPU", "Processor Model", "RAM", "ROM/Capacity", "Storage Drive", "Kaspersky", "Phone Connected", "Phone Number", "Printer Connected", "Printer Name", "Backup Configured", "Backup Schedule"]
       : ["Item Name", "Brand/Model", "User", "Quantity", "Unit", "Status", "Location"];
 
     const tableData = filteredData.map(item => {
@@ -211,10 +217,11 @@ export default function InventoryPage() {
         return [
           item.building || "", item.department || "", item.user_full_name || "", item.computer_type || "",
           item.email || "", item.device_name || "", item.os_edition || "", item.os_version || "", item.status || "",
-          item.ms_office_version || "", item.processor_brand || "", item.processor_gen || "", item.processor_cpu || "",
+          item.ms_office_version || "", item.ms_office_status || "", item.processor_brand || "", item.processor_gen || "", item.processor_cpu || "",
           item.processor_model || "", item.ram || "", item.rom || "", item.storage_drive || "", item.kaspersky || "",
           item.phone || "", item.phone === 'Yes' ? item.phone_number || "" : "None",
-          item.printer || "", item.printer === 'Yes' ? item.printer_name || "" : "None"
+          item.printer || "", item.printer === 'Yes' ? item.printer_name || "" : "None",
+          item.backup || "", item.backup === 'Yes' ? item.backup_schedule || "" : "None"
         ];
       } else {
         return [
@@ -234,13 +241,10 @@ export default function InventoryPage() {
 
     // 4. Auto-size columns based on the content
     const colWidths = headers.map((header, index) => {
-      // Find the maximum length of text in this column
       const maxLength = finalData.reduce((max, row) => {
         const cellValue = row[index] ? row[index].toString() : "";
         return Math.max(max, cellValue.length);
       }, header.length);
-      
-      // Add a little extra padding (e.g., 2 characters) for breathing room
       return { wch: maxLength + 2 };
     });
 
@@ -265,16 +269,17 @@ export default function InventoryPage() {
     doc.text(`Inventory Report: ${activeCategory}`, 14, 28);
 
     const tableColumn = activeCategory === 'Personal Computer' 
-      ? ["Bldg", "Dept", "User", "Type", "Email", "Device", "OS", "Status", "MS Office", "CPU", "RAM", "Drive", "Printer", "Phone"]
+      ? ["Bldg", "Dept", "User", "Type", "Device", "OS", "Status", "Office Ver", "Office Stat", "CPU", "RAM", "Drive", "Printer", "Phone", "Backup"]
       : ["Item Name", "Brand/Model", "User", "Qty", "Unit", "Status", "Location"];
 
     const tableRows = filteredData.map(item => activeCategory === 'Personal Computer' ? [
         item.building || "", item.department || "", item.user_full_name || "", item.computer_type || "",
-        item.email || "", item.device_name || "", `${item.os_edition} ${item.os_version}`, 
-        item.status || "", item.ms_office_version || "", `${item.processor_brand} ${item.processor_cpu}`, 
+        item.device_name || "", `${item.os_edition} ${item.os_version}`, 
+        item.status || "", item.ms_office_version || "", item.ms_office_status || "", `${item.processor_brand} ${item.processor_cpu}`, 
         item.ram || "", `${item.rom} ${item.storage_drive}`, 
         item.printer === 'Yes' ? item.printer_name : "None",
-        item.phone === 'Yes' ? item.phone_number : "None"
+        item.phone === 'Yes' ? item.phone_number : "None",
+        item.backup === 'Yes' ? item.backup_schedule : "None"
       ] : [
         item.item_name || "", item.brand_model || "", item.user_full_name || "N/A",
         item.quantity?.toString() || "0", item.unit || "", item.status || "", item.location || ""
@@ -404,7 +409,10 @@ export default function InventoryPage() {
                           <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">DEVICE NAME</th>
                           <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center">Windos SPICIFICATION</th>
                           <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">STATUS</th>
-                          <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">MS OFFICE VERSION</th>
+                          
+                          {/* --- CHANGED MS OFFICE TO colSpan=2 --- */}
+                          <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center">MS OFFICE</th>
+                          
                           <th colSpan={4} className="px-3 py-2 border-r border-b border-slate-200 text-center">PROCESSOR</th>
                           <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">RAM</th>
                           <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">ROM / Capacity</th>
@@ -412,19 +420,30 @@ export default function InventoryPage() {
                           <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">KASPERSKY</th>
                           <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center">PHONE</th>
                           <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center">PRINTER</th>
+                          <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center">BACKUP</th>
                           <th rowSpan={2} className="px-4 py-3 text-center sticky right-0 bg-slate-50 border-l shadow-sm align-middle z-20">Actions</th>
                         </tr>
                         <tr>
+                          {/* WINDOWS */}
                           <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">EDITION</th>
                           <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">VERSION</th>
+                          {/* MS OFFICE */}
+                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">VERSION</th>
+                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">STATUS</th>
+                          {/* PROCESSOR */}
                           <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">BRAND</th>
                           <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">generation</th>
                           <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">CPU</th>
                           <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">model number</th>
+                          {/* PHONE */}
                           <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Conn.</th>
                           <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Number</th>
+                          {/* PRINTER */}
                           <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Conn.</th>
                           <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Name</th>
+                          {/* BACKUP */}
+                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Config.</th>
+                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Schedule</th>
                         </tr>
                       </>
                     ) : (
@@ -441,7 +460,7 @@ export default function InventoryPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-center">
                     {loading ? (
-                      <tr><td colSpan={24} className="p-20 text-center"><Loader2 className="animate-spin inline text-red-900" size={32}/></td></tr>
+                      <tr><td colSpan={26} className="p-20 text-center"><Loader2 className="animate-spin inline text-red-900" size={32}/></td></tr>
                     ) : filteredData.length > 0 ? (
                       filteredData.map((item) => (
                         <tr key={item.id} className="hover:bg-slate-50/80 transition-colors group text-slate-700">
@@ -457,6 +476,9 @@ export default function InventoryPage() {
                               <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.os_version}</td>
                               <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.status}</td>
                               <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.ms_office_version}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">
+                                <span className={`px-2 py-0.5 rounded-full font-bold border-slate-50 ${item.ms_office_status?.toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{item.ms_office_status}</span>
+                              </td>
                               <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.processor_brand}</td>
                               <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.processor_gen}</td>
                               <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.processor_cpu}</td>
@@ -471,6 +493,8 @@ export default function InventoryPage() {
                               <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.phone === 'Yes' ? item.phone_number : '-'}</td>
                               <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.printer}</td>
                               <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.printer === 'Yes' ? item.printer_name : '-'}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.backup}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.backup === 'Yes' ? item.backup_schedule : '-'}</td>
                             </>
                           ) : (
                             <>
@@ -491,7 +515,7 @@ export default function InventoryPage() {
                         </tr>
                       ))
                     ) : (
-                      <tr><td colSpan={24} className="p-10 text-center italic text-slate-400 uppercase text-[10px]">No records found</td></tr>
+                      <tr><td colSpan={26} className="p-10 text-center italic text-slate-400 uppercase text-[10px]">No records found</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -499,7 +523,6 @@ export default function InventoryPage() {
             </div>
           </div>
           
-          {/* --- ADDED FOOTER HERE --- */}
           <footer className="mt-6 py-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest border-t border-slate-200/80">
             Developed by Christian B. Maglangit
           </footer>
@@ -529,11 +552,15 @@ export default function InventoryPage() {
                   <div className="col-span-full font-bold text-slate-800 border-b pb-1 mb-2 mt-2">OS & Software</div>
                   <InputGroup label="OS Edition" value={formData.os_edition || ''} onChange={(v) => setFormData({...formData, os_edition: v})} type="select" options={['Windows 11 Pro', 'Windows 11 Home', 'Windows 10 Pro', 'Windows 10 Home', 'Windows 8.1', 'Windows 7', 'macOS', 'Linux']} />
                   <InputGroup label="OS Version" placeholder="Ex: 22H2" value={formData.os_version || ''} onChange={(v) => setFormData({...formData, os_version: v})} />
-                  <InputGroup label="MS Office" value={formData.ms_office_version} onChange={(v) => setFormData({...formData, ms_office_version: v})} type="select" options={[
+                  
+                  {/* --- MS OFFICE WITH STATUS --- */}
+                  <InputGroup label="MS Office Version" value={formData.ms_office_version} onChange={(v) => setFormData({...formData, ms_office_version: v})} type="select" options={[
                     'Home & Business 2024', 'Home & Business 2021', 'Home & Business 2019', 'Home & Business 2016', 
                     'Professional Plus 2024', 'Professional Plus 2021', 'Professional Plus 2019', 'Professional Plus 2016', 
                     'Office 365', 'None'
                   ]} />
+                  <InputGroup label="MS Office Status" value={formData.ms_office_status || 'Active'} onChange={(v) => setFormData({...formData, ms_office_status: v})} type="select" options={['Active', 'Not Active']} />
+
                   <InputGroup label="Kaspersky" value={formData.kaspersky} onChange={(v) => setFormData({...formData, kaspersky: v})} type="select" options={['Active', 'Not Active']} />
 
                   <div className="col-span-full font-bold text-slate-800 border-b pb-1 mb-2 mt-2">Processor Details</div>
@@ -611,6 +638,13 @@ export default function InventoryPage() {
                     </>
                   )}
                   
+                  {/* --- ADDED BACKUP SETTINGS --- */}
+                  <div className="col-span-full font-bold text-slate-800 border-b pb-1 mb-2 mt-2">Backup Settings</div>
+                  <InputGroup label="Backup Configured?" value={formData.backup || 'No'} onChange={(v) => setFormData({...formData, backup: v})} type="select" options={['Yes', 'No']} />
+                  {formData.backup === 'Yes' && (
+                    <InputGroup label="Backup Schedule" value={formData.backup_schedule || 'Daily'} onChange={(v) => setFormData({...formData, backup_schedule: v})} type="select" options={['Daily', 'Weekly', 'Monthly']} />
+                  )}
+
                 </>
               ) : (
                 <>
