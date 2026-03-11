@@ -37,6 +37,8 @@ interface InventoryItem {
   storage_drive?: string;
   kaspersky: string;
   phone?: string;
+  phone_connection_type?: string; 
+  phone_type?: string; 
   phone_number?: string;
   printer?: string;
   printer_name?: string;
@@ -77,6 +79,9 @@ const cpuOptionsMap: Record<string, string[]> = {
   'Apple': ['M4 Max', 'M4 Pro', 'M4', 'M3 Max', 'M3 Pro', 'M3', 'M2 Ultra', 'M2 Max', 'M2 Pro', 'M2', 'M1 Ultra', 'M1 Max', 'M1 Pro', 'M1', 'Intel Core i9', 'Intel Core i7', 'Intel Core i5'],
 };
 
+const romList = ['128GB', '240GB', '256GB', '480GB', '500GB', '512GB', '1TB', '2TB'];
+const printerList = ['Epson L3110', 'Epson L3210', 'Brother L210'];
+
 export default function InventoryPage() {
   const [activeCategory, setActiveCategory] = useState('Personal Computer');
   const [searchTerm, setSearchTerm] = useState('');
@@ -95,8 +100,9 @@ export default function InventoryPage() {
     processor_brand: 'Intel', processor_gen: '10th Gen', 
     processor_cpu: 'Core i5', processor_model: '', ram: '8GB', rom: '256GB', 
     storage_drive: 'SSD', kaspersky: 'Active', 
-    phone: 'No', phone_number: '', printer: 'No', printer_name: 'Epson L3110', // Added default to avoid blank save
-    backup: 'No', backup_schedule: 'Daily', // Added default to avoid blank save
+    phone: 'No', phone_connection_type: 'Local', phone_type: 'Landline', phone_number: '', 
+    printer: 'No', printer_name: 'Epson L3110', 
+    backup: 'No', backup_schedule: 'Daily', 
     // Parts Form Fields
     item_name: 'Monitor', brand_model: 'Dell', serial_number: '', quantity: 1, unit: 'Pcs', location: 'MIS STORAGE'
   };
@@ -159,6 +165,8 @@ export default function InventoryPage() {
       let payload: any = { user_id: user.id };
 
       if (activeCategory === 'Personal Computer') {
+        const isPhoneConnected = formData.phone?.toLowerCase() === 'yes';
+        
         payload = { ...payload,
           building: formData.building, department: formData.department,
           user_full_name: formData.user_full_name, computer_type: formData.computer_type, email: formData.email,
@@ -168,8 +176,12 @@ export default function InventoryPage() {
           processor_brand: formData.processor_brand, processor_gen: formData.processor_gen, processor_cpu: formData.processor_cpu, 
           processor_model: formData.processor_model, ram: formData.ram, rom: formData.rom, 
           storage_drive: formData.storage_drive, kaspersky: formData.kaspersky, 
+          
           phone: formData.phone, 
-          phone_number: formData.phone?.toLowerCase() === 'yes' ? formData.phone_number : '',
+          phone_connection_type: isPhoneConnected ? formData.phone_connection_type : '',
+          phone_type: isPhoneConnected ? formData.phone_type : '',
+          phone_number: isPhoneConnected ? formData.phone_number : '',
+          
           printer: formData.printer, 
           printer_name: formData.printer?.toLowerCase() === 'yes' ? formData.printer_name : '',
           backup: formData.backup, 
@@ -212,17 +224,18 @@ export default function InventoryPage() {
 
     // Define Headers
     const headers = activeCategory === 'Personal Computer'
-      ? ["Building", "Department", "User Full Name", "Computer Type", "Email", "Device Name", "OS Edition", "OS Version", "Status", "MS Office Version", "MS Office Status", "Processor Brand", "Processor Gen", "Processor CPU", "Processor Model", "RAM", "ROM/Capacity", "Storage Drive", "Kaspersky", "Phone Connected", "Phone Number", "Printer Connected", "Printer Name", "Backup Configured", "Backup Schedule"]
+      ? ["Building", "Department", "User Full Name", "Computer Type", "Email", "Device Name", "OS Edition", "OS Version", "Status", "MS Office Version", "MS Office Status", "Processor Brand", "Processor Gen", "Processor CPU", "Processor Model", "RAM", "ROM/Capacity", "Storage Drive", "Kaspersky", "Phone Connected", "Phone Conn Type", "Phone Type", "Phone Number", "Printer Connected", "Printer Name", "Backup Configured", "Backup Schedule"]
       : ["Item Name", "Brand/Model", "User", "Quantity", "Unit", "Status", "Location"];
 
     const tableData = filteredData.map(item => {
       if (activeCategory === 'Personal Computer') {
+        const isPhone = item.phone?.toLowerCase() === 'yes';
         return [
           item.building || "", item.department || "", item.user_full_name || "", item.computer_type || "",
           item.email || "", item.device_name || "", item.os_edition || "", item.os_version || "", item.status || "",
           item.ms_office_version || "", item.ms_office_status || "", item.processor_brand || "", item.processor_gen || "", item.processor_cpu || "",
           item.processor_model || "", item.ram || "", item.rom || "", item.storage_drive || "", item.kaspersky || "",
-          item.phone || "", item.phone?.toLowerCase() === 'yes' ? item.phone_number || "" : "None",
+          item.phone || "", isPhone ? item.phone_connection_type || "" : "None", isPhone ? item.phone_type || "" : "None", isPhone ? item.phone_number || "" : "None",
           item.printer || "", item.printer?.toLowerCase() === 'yes' ? item.printer_name || "" : "None",
           item.backup || "", item.backup?.toLowerCase() === 'yes' ? item.backup_schedule || "" : "None"
         ];
@@ -234,15 +247,11 @@ export default function InventoryPage() {
       }
     });
 
-    // 2. Combine headers and data
     const finalData = [headers, ...tableData];
-
-    // 3. Create Worksheet and Workbook
     const worksheet = XLSX.utils.aoa_to_sheet(finalData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, activeCategory.substring(0, 31)); // sheet names max 31 chars
+    XLSX.utils.book_append_sheet(workbook, worksheet, activeCategory.substring(0, 31)); 
 
-    // 4. Auto-size columns based on the content
     const colWidths = headers.map((header, index) => {
       const maxLength = finalData.reduce((max, row) => {
         const cellValue = row[index] ? row[index].toString() : "";
@@ -252,8 +261,6 @@ export default function InventoryPage() {
     });
 
     worksheet['!cols'] = colWidths;
-
-    // 5. Download the file
     XLSX.writeFile(workbook, `MVC_Inventory_${activeCategory.replace(/ /g, '_')}.xlsx`);
   };
 
@@ -272,21 +279,29 @@ export default function InventoryPage() {
     doc.text(`Inventory Report: ${activeCategory}`, 14, 28);
 
     const tableColumn = activeCategory === 'Personal Computer' 
-      ? ["Bldg", "Dept", "User", "Type", "Device", "OS", "Status", "Office Ver", "Office Stat", "CPU", "RAM", "Drive", "Printer", "Phone", "Backup"]
+      ? ["Bldg", "Dept", "User", "Type", "Device", "OS", "Status", "Office Ver", "Office Stat", "CPU", "RAM", "Drive", "Kaspersky", "Printer", "Phone Type", "Phone #", "Backup"]
       : ["Item Name", "Brand/Model", "User", "Qty", "Unit", "Status", "Location"];
 
-    const tableRows = filteredData.map(item => activeCategory === 'Personal Computer' ? [
-        item.building || "", item.department || "", item.user_full_name || "", item.computer_type || "",
-        item.device_name || "", `${item.os_edition} ${item.os_version}`, 
-        item.status || "", item.ms_office_version || "", item.ms_office_status || "", `${item.processor_brand} ${item.processor_cpu}`, 
-        item.ram || "", `${item.rom} ${item.storage_drive}`, 
-        item.printer?.toLowerCase() === 'yes' ? item.printer_name : "None",
-        item.phone?.toLowerCase() === 'yes' ? item.phone_number : "None",
-        item.backup?.toLowerCase() === 'yes' ? item.backup_schedule : "None"
-      ] : [
-        item.item_name || "", item.brand_model || "", item.user_full_name || "N/A",
-        item.quantity?.toString() || "0", item.unit || "", item.status || "", item.location || ""
-      ]);
+    const tableRows = filteredData.map(item => {
+        if (activeCategory === 'Personal Computer') {
+           const isPhone = item.phone?.toLowerCase() === 'yes';
+           return [
+            item.building || "", item.department || "", item.user_full_name || "", item.computer_type || "",
+            item.device_name || "", `${item.os_edition} ${item.os_version}`, 
+            item.status || "", item.ms_office_version || "", item.ms_office_status || "", `${item.processor_brand} ${item.processor_cpu}`, 
+            item.ram || "", `${item.rom} ${item.storage_drive}`, item.kaspersky || "",
+            item.printer?.toLowerCase() === 'yes' ? item.printer_name : "None",
+            isPhone ? `${item.phone_connection_type}-${item.phone_type}` : "None",
+            isPhone ? item.phone_number : "None",
+            item.backup?.toLowerCase() === 'yes' ? item.backup_schedule : "None"
+          ]
+        } else {
+            return [
+                item.item_name || "", item.brand_model || "", item.user_full_name || "N/A",
+                item.quantity?.toString() || "0", item.unit || "", item.status || "", item.location || ""
+              ]
+        }
+    });
 
     autoTable(doc, { head: [tableColumn], body: tableRows as any, startY: 30, styles: { fontSize: 7 }, headStyles: { fillColor: [127, 0, 0] } });
     doc.save(`MVC_${activeCategory.replace(/ /g, '_')}.pdf`);
@@ -418,7 +433,7 @@ export default function InventoryPage() {
                           <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">ROM / Capacity</th>
                           <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">Storage drive</th>
                           <th rowSpan={2} className="px-3 py-3 border-r border-slate-200 align-middle">KASPERSKY</th>
-                          <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center">PHONE</th>
+                          <th colSpan={3} className="px-3 py-2 border-r border-b border-slate-200 text-center">PHONE</th>
                           <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center">PRINTER</th>
                           <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center">BACKUP</th>
                           <th rowSpan={2} className="px-4 py-3 text-center sticky right-0 bg-slate-50 border-l shadow-sm align-middle z-20">Actions</th>
@@ -435,8 +450,9 @@ export default function InventoryPage() {
                           <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">generation</th>
                           <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">CPU</th>
                           <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">model number</th>
-                          {/* PHONE */}
-                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Conn.</th>
+                          {/* PHONE: Added Connection Type */}
+                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Conn. Type</th>
+                          <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Type</th>
                           <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Number</th>
                           {/* PRINTER */}
                           <th className="px-3 py-2 border-r border-slate-200 bg-blue-50/50">Conn.</th>
@@ -460,7 +476,7 @@ export default function InventoryPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-center">
                     {loading ? (
-                      <tr><td colSpan={26} className="p-20 text-center"><Loader2 className="animate-spin inline text-red-900" size={32}/></td></tr>
+                      <tr><td colSpan={27} className="p-20 text-center"><Loader2 className="animate-spin inline text-red-900" size={32}/></td></tr>
                     ) : filteredData.length > 0 ? (
                       filteredData.map((item) => (
                         <tr key={item.id} className="hover:bg-slate-50/80 transition-colors group text-slate-700">
@@ -489,12 +505,16 @@ export default function InventoryPage() {
                               <td className="px-3 py-3.5 border-r border-slate-100 uppercase">
                                 <span className={`px-2 py-0.5 rounded-full font-bold border-slate-50 ${item.kaspersky?.toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{item.kaspersky}</span>
                               </td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.phone}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.phone?.toLowerCase() === 'yes' ? item.phone_number || '-' : '-'}</td>
+                              
+                              {/* PHONE DATA RENDERING */}
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.phone?.toLowerCase() === 'yes' ? item.phone_connection_type : '-'}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.phone?.toLowerCase() === 'yes' ? item.phone_type : '-'}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.phone?.toLowerCase() === 'yes' ? item.phone_number : '-'}</td>
+                              
                               <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.printer}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.printer?.toLowerCase() === 'yes' ? item.printer_name || '-' : '-'}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.printer?.toLowerCase() === 'yes' ? item.printer_name : '-'}</td>
                               <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.backup}</td>
-                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.backup?.toLowerCase() === 'yes' ? item.backup_schedule || '-' : '-'}</td>
+                              <td className="px-3 py-3.5 border-r border-slate-100 uppercase">{item.backup?.toLowerCase() === 'yes' ? item.backup_schedule : '-'}</td>
                             </>
                           ) : (
                             <>
@@ -515,7 +535,7 @@ export default function InventoryPage() {
                         </tr>
                       ))
                     ) : (
-                      <tr><td colSpan={26} className="p-10 text-center italic text-slate-400 uppercase text-[10px]">No records found</td></tr>
+                      <tr><td colSpan={27} className="p-10 text-center italic text-slate-400 uppercase text-[10px]">No records found</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -553,8 +573,8 @@ export default function InventoryPage() {
                   <InputGroup label="OS Edition" value={formData.os_edition || ''} onChange={(v) => setFormData({...formData, os_edition: v})} type="select" options={['Windows 11 Pro', 'Windows 11 Home', 'Windows 10 Pro', 'Windows 10 Home', 'Windows 8.1', 'Windows 7', 'macOS', 'Linux']} />
                   <InputGroup label="OS Version" placeholder="Ex: 22H2" value={formData.os_version || ''} onChange={(v) => setFormData({...formData, os_version: v})} />
                   <InputGroup label="MS Office" value={formData.ms_office_version} onChange={(v) => setFormData({...formData, ms_office_version: v})} type="select" options={[
-                    'Home & Business 2024', 'Home & Business 2021', 'Home & Business 2019', 'Home & Business 2016', 'Home & Business 2010', 
-                    'Professional Plus 2024', 'Professional Plus 2021', 'Professional Plus 2019', 'Professional Plus 2016', 'Professional Plus 2010',
+                    'Home & Business 2024', 'Home & Business 2021', 'Home & Business 2019', 'Home & Business 2016', 
+                    'Professional Plus 2024', 'Professional Plus 2021', 'Professional Plus 2019', 'Professional Plus 2016', 
                     'Office 365', 'None'
                   ]} />
                   <InputGroup label="MS Office Status" value={formData.ms_office_status || 'Active'} onChange={(v) => setFormData({...formData, ms_office_status: v})} type="select" options={['Active', 'Not Active']} />
@@ -612,14 +632,49 @@ export default function InventoryPage() {
                   <InputGroup label="Storage Drive" value={formData.storage_drive || ''} onChange={(v) => setFormData({...formData, storage_drive: v})} type="select" options={['SSD', 'HDD', 'NVMe', 'M.2']} />
                   
                   <div className="col-span-full font-bold text-slate-800 border-b pb-1 mb-2 mt-2">Peripherals</div>
-                  <InputGroup label="Phone Connected?" value={formData.phone || 'No'} onChange={(v) => setFormData({...formData, phone: v})} type="select" options={['Yes', 'No']} />
+                  
+                  {/* --- PHONE LOGIC --- */}
+                  <InputGroup label="Phone Connected?" value={formData.phone || 'No'} onChange={(v) => {
+                    setFormData({
+                      ...formData, 
+                      phone: v, 
+                      phone_connection_type: v.toLowerCase() === 'yes' ? 'Local' : '',
+                      phone_type: v.toLowerCase() === 'yes' ? 'Landline' : '',
+                      phone_number: ''
+                    })
+                  }} type="select" options={['Yes', 'No']} />
+                  
                   {formData.phone?.toLowerCase() === 'yes' && (
-                    <InputGroup label="Phone Number" placeholder="Ex: Local 101" value={formData.phone_number || ''} onChange={(v) => setFormData({...formData, phone_number: v})} required />
+                    <>
+                      <InputGroup 
+                        label="Connection Type" 
+                        value={formData.phone_connection_type || 'Local'} 
+                        onChange={(v) => {
+                          setFormData({
+                            ...formData, 
+                            phone_connection_type: v, 
+                            phone_type: v === 'Local' ? 'Landline' : 'Fanvil',
+                            phone_number: ''
+                          });
+                        }} 
+                        type="select" 
+                        options={['Local', 'IP']} 
+                      />
+                      
+                      <InputGroup 
+                        label="Phone Type" 
+                        value={formData.phone_type || (formData.phone_connection_type === 'Local' ? 'Landline' : 'Fanvil')} 
+                        onChange={(v) => setFormData({...formData, phone_type: v})} 
+                        type="select" 
+                        options={formData.phone_connection_type === 'Local' ? ['Landline', 'Local'] : ['Fanvil', 'Cisco']} 
+                      />
+
+                      <InputGroup label="Phone Number" placeholder="Ex: 101" value={formData.phone_number || ''} onChange={(v) => setFormData({...formData, phone_number: v})} required />
+                    </>
                   )}
+                  {/* ------------------- */}
                   
                   <InputGroup label="Printer Connected?" value={formData.printer || 'No'} onChange={(v) => setFormData({...formData, printer: v})} type="select" options={['Yes', 'No']} />
-                  
-                  {/* PRINTER NAME: SHOW ONLY IF PRINTER IS YES */}
                   {formData.printer?.toLowerCase() === 'yes' && (
                     <>
                       <InputGroup 
