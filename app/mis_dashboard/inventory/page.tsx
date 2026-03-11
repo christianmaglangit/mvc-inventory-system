@@ -553,8 +553,8 @@ export default function InventoryPage() {
                   <InputGroup label="OS Edition" value={formData.os_edition || ''} onChange={(v) => setFormData({...formData, os_edition: v})} type="select" options={['Windows 11 Pro', 'Windows 11 Home', 'Windows 10 Pro', 'Windows 10 Home', 'Windows 8.1', 'Windows 7', 'macOS', 'Linux']} />
                   <InputGroup label="OS Version" placeholder="Ex: 22H2" value={formData.os_version || ''} onChange={(v) => setFormData({...formData, os_version: v})} />
                   <InputGroup label="MS Office" value={formData.ms_office_version} onChange={(v) => setFormData({...formData, ms_office_version: v})} type="select" options={[
-                    'Home & Business 2024', 'Home & Business 2021', 'Home & Business 2019', 'Home & Business 2016', 
-                    'Professional Plus 2024', 'Professional Plus 2021', 'Professional Plus 2019', 'Professional Plus 2016', 
+                    'Home & Business 2024', 'Home & Business 2021', 'Home & Business 2019', 'Home & Business 2016', 'Home & Business 2010', 
+                    'Professional Plus 2024', 'Professional Plus 2021', 'Professional Plus 2019', 'Professional Plus 2016', 'Professional Plus 2010',
                     'Office 365', 'None'
                   ]} />
                   <InputGroup label="MS Office Status" value={formData.ms_office_status || 'Active'} onChange={(v) => setFormData({...formData, ms_office_status: v})} type="select" options={['Active', 'Not Active']} />
