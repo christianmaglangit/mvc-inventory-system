@@ -163,11 +163,9 @@ function LoginPage({ onSignUpClick, onForgotClick }: { onSignUpClick: () => void
         </div>
 
         <div className="space-y-1">
-          <div className="flex justify-between items-center ml-1">
+          {/* Removed the 'justify-between' since we moved the Forgot button down */}
+          <div className="ml-1">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Password</label>
-            <button type="button" onClick={onForgotClick} className="text-[10px] font-bold text-slate-400 hover:text-red-700 transition-colors uppercase">
-              Forgot Password?
-            </button>
           </div>
           <div className="relative">
             <input 
@@ -185,12 +183,18 @@ function LoginPage({ onSignUpClick, onForgotClick }: { onSignUpClick: () => void
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
+          {/* MOVED FORGOT PASSWORD BUTTON HERE */}
+          <div className="flex justify-end pt-1">
+            <button type="button" onClick={onForgotClick} className="text-[10px] font-bold text-slate-400 hover:text-red-700 transition-colors uppercase">
+              Forgot Password?
+            </button>
+          </div>
         </div>
         
         <button 
           disabled={authLoading} 
           type="submit" 
-          className="w-full py-3 bg-red-800 hover:bg-red-900 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-900/20 active:scale-[0.98]"
+          className="w-full py-3 bg-red-800 hover:bg-red-900 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-900/20 active:scale-[0.98] mt-2"
         >
           {authLoading ? (
             <Activity className="animate-spin" size={16} />
@@ -231,8 +235,16 @@ function SignUpPage({ onSignInClick, onSignUpSuccess }: { onSignInClick: () => v
           } 
         }
       });
+      // Handle error or success here
+      if (error) {
+        setNotification({ type: 'error', message: error.message });
+      } else {
+        setNotification({ type: 'success', message: 'Account created! Please verify your email.' });
+        // Optionally trigger onSignUpSuccess() if you don't require email verification
+      }
     } catch (err) {
       setNotification({ type: 'error', message: 'An unexpected error occurred during registration.' });
+    } finally {
       setAuthLoading(false);
     }
   };
