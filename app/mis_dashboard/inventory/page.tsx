@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { 
   LayoutDashboard, Search, Server, HardDrive,
-  Plus, X, LogOut, Edit, Trash2, Loader2, Download, Menu, Filter
+  Plus, X, LogOut, Edit, Trash2, Loader2, Download, Menu, Filter, Phone
 } from 'lucide-react';
 
 import { jsPDF } from 'jspdf';
@@ -79,6 +79,13 @@ const cpuOptionsMap: Record<string, string[]> = {
   'Apple': ['M4 Max', 'M4 Pro', 'M4', 'M3 Max', 'M3 Pro', 'M3', 'M2 Ultra', 'M2 Max', 'M2 Pro', 'M2', 'M1 Ultra', 'M1 Max', 'M1 Pro', 'M1', 'Intel Core i9', 'Intel Core i7', 'Intel Core i5'],
 };
 
+const epsList = [
+  'Kaspersky', 'Microsoft', 'Symantec', 'McAfee', 'Trend Micro', 
+  'Sophos', 'CrowdStrike', 'SentinelOne', 'Bitdefender', 'ESET', 
+  'VMware', 'Palo Alto Networks', 'Cisco', 'Fortinet', 'Avast', 
+  'AVG', 'Malwarebytes', 'None'
+];
+
 const romList = ['128GB', '240GB', '256GB', '480GB', '500GB', '512GB', '1TB', '2TB'];
 const printerList = ['Epson L3110', 'Epson L3210', 'Brother L210'];
 
@@ -101,14 +108,21 @@ export default function InventoryPage() {
     processor_brand: 'Intel', processor_gen: '10th Gen', 
     processor_cpu: 'Core i5', processor_model: '', ram: '8GB', rom: '256GB', 
     storage_drive: 'SSD', kaspersky: 'Active', 
-    phone: 'No', phone_connection_type: 'Local', phone_type: 'Landline', phone_number: '', 
+    
+    // --- PHONE STATE LOGIC ---
+    phone: 'No', 
+    phone_quantity: 1,
+    phone_conn_types: ['Local'],
+    phone_types: ['Landline'],
+    phone_numbers: [''],
+    
     printer: 'No', printer_name: 'Epson L3110', 
     backup: 'No', backup_schedule: 'Daily', 
     // Parts Form Fields
     item_name: 'Monitor', brand_model: 'Dell', serial_number: '', quantity: 1, unit: 'Pcs', location: 'MIS STORAGE'
   };
 
-  const [formData, setFormData] = useState(initialForm);
+  const [formData, setFormData] = useState<any>(initialForm);
   const router = useRouter();
 
   const toTitleCase = (str: string) => {
@@ -158,7 +172,6 @@ export default function InventoryPage() {
     if (user) fetchData();
   }, [activeCategory, user]);
 
-  // --- AUTHENTICATION HELPER ---
   const verifyPassword = async (password: string) => {
     if (!user?.email) return false;
     const { error } = await supabase.auth.signInWithPassword({
@@ -190,9 +203,11 @@ export default function InventoryPage() {
           storage_drive: formData.storage_drive, kaspersky: formData.kaspersky, 
           
           phone: formData.phone, 
-          phone_connection_type: isPhoneConnected ? formData.phone_connection_type : '',
-          phone_type: isPhoneConnected ? formData.phone_type : '',
-          phone_number: isPhoneConnected ? formData.phone_number : '',
+          
+          // COMBINE PHONE ARRAYS INTO SINGLE STRINGS WITH ' / ' SEPARATOR
+          phone_connection_type: isPhoneConnected ? formData.phone_conn_types.slice(0, formData.phone_quantity).join(' / ') : '',
+          phone_type: isPhoneConnected ? formData.phone_types.slice(0, formData.phone_quantity).join(' / ') : '',
+          phone_number: isPhoneConnected ? formData.phone_numbers.slice(0, formData.phone_quantity).join(' / ') : '',
           
           printer: formData.printer, 
           printer_name: formData.printer?.toLowerCase() === 'yes' ? formData.printer_name : '',
@@ -226,17 +241,18 @@ export default function InventoryPage() {
     }
   };
 
-  const getDataToExport = () => {
-    let dataToExport = filteredData;
-    if (selectedExportDept !== 'All Departments') {
-      dataToExport = dataToExport.filter(item => item.department?.toUpperCase() === selectedExportDept.toUpperCase());
-    }
-    return dataToExport;
-  };
+  // Extract unique departments for the filter dropdown
+  const uniqueDepartments = Array.from(new Set(inventoryList.map(item => item.department?.toUpperCase()).filter(Boolean)));
+
+  // --- FILTER DATA FOR BOTH TABLE DISPLAY AND EXPORT ---
+  const filteredData = inventoryList.filter(item => {
+    const matchesSearch = (item.user_full_name || item.item_name || "").toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesDept = selectedExportDept === 'All Departments' || item.department?.toUpperCase() === selectedExportDept.toUpperCase();
+    return matchesSearch && matchesDept;
+  });
 
   const handleExportExcel = () => {
-    const dataToExport = getDataToExport();
-    if (dataToExport.length === 0) {
+    if (filteredData.length === 0) {
       Swal.fire('Info', 'No data to export for this selection', 'info');
       return;
     }
@@ -245,10 +261,10 @@ export default function InventoryPage() {
 
     // Define Headers
     const headers = activeCategory === 'Personal Computer'
-      ? ["Building", "Department", "User Full Name", "Computer Type", "Email", "Device Name", "OS Edition", "OS Version", "Status", "MS Office Version", "MS Office Status", "Processor Brand", "Processor Gen", "Processor CPU", "Processor Model", "RAM", "ROM/Capacity", "Storage Drive", "Kaspersky", "Phone Connected", "Phone Conn Type", "Phone Type", "Phone Number", "Printer Connected", "Printer Name", "Backup Configured", "Backup Schedule"]
+      ? ["Building", "Department", "User Full Name", "Computer Type", "Email", "Device Name", "OS Edition", "OS Version", "Status", "MS Office Version", "MS Office Status", "Processor Brand", "Processor Gen", "Processor CPU", "Processor Model", "RAM", "ROM/Capacity", "Storage Drive", "EPS", "Phone Connected", "Phone Conn Type", "Phone Type", "Phone Number", "Printer Connected", "Printer Name", "Backup Configured", "Backup Schedule"]
       : ["Item Name", "Brand/Model", "User", "Quantity", "Unit", "Status", "Location"];
 
-    const tableData = dataToExport.map(item => {
+    const tableData = filteredData.map(item => {
       if (activeCategory === 'Personal Computer') {
         const isPhone = item.phone?.toLowerCase() === 'yes';
         return [
@@ -278,7 +294,7 @@ export default function InventoryPage() {
         const cellValue = row[index] ? row[index].toString() : "";
         return Math.max(max, cellValue.length);
       }, header.length);
-      return { wch: maxLength + 2 };
+      return { wch: Math.min(maxLength + 2, 50) }; // cap width
     });
 
     worksheet['!cols'] = colWidths;
@@ -288,8 +304,7 @@ export default function InventoryPage() {
   };
 
   const handleExportPDF = () => {
-    const dataToExport = getDataToExport();
-    if (dataToExport.length === 0) {
+    if (filteredData.length === 0) {
       Swal.fire('Info', 'No data to export for this selection', 'info');
       return;
     }
@@ -303,10 +318,10 @@ export default function InventoryPage() {
     doc.text(`Inventory Report: ${activeCategory}`, 14, 28);
 
     const tableColumn = activeCategory === 'Personal Computer' 
-      ? ["Bldg", "Dept", "User", "Type", "Device", "OS", "Status", "Office Ver", "Office Stat", "CPU", "RAM", "Drive", "Kaspersky", "Printer", "Phone Type", "Phone #", "Backup"]
+      ? ["Bldg", "Dept", "User", "Type", "Device", "OS", "Status", "Office Ver", "Office Stat", "CPU", "RAM", "Drive", "EPS", "Printer", "Phone Type", "Phone #", "Backup"]
       : ["Item Name", "Brand/Model", "User", "Qty", "Unit", "Status", "Location"];
 
-    const tableRows = dataToExport.map(item => {
+    const tableRows = filteredData.map(item => {
         if (activeCategory === 'Personal Computer') {
            const isPhone = item.phone?.toLowerCase() === 'yes';
            return [
@@ -351,7 +366,23 @@ export default function InventoryPage() {
       const isValid = await verifyPassword(password);
       if (isValid) {
         setEditingId(item.id);
-        setFormData({ ...initialForm, ...item } as any);
+        
+        // Parse Multiple Phone Logic for Editing
+        const isPhone = item.phone?.toLowerCase() === 'yes';
+        const pConn = item.phone_connection_type ? item.phone_connection_type.split(' / ') : ['Local'];
+        const pType = item.phone_type ? item.phone_type.split(' / ') : ['Landline'];
+        const pNum = item.phone_number ? item.phone_number.split(' / ') : [''];
+        const pQty = isPhone ? Math.max(1, pNum.length) : 1;
+
+        setFormData({ 
+          ...initialForm, 
+          ...item,
+          phone_quantity: pQty,
+          phone_conn_types: pConn,
+          phone_types: pType,
+          phone_numbers: pNum
+        });
+        
         setIsModalOpen(true);
       } else {
         Swal.fire('Error', 'Incorrect password', 'error');
@@ -398,13 +429,6 @@ export default function InventoryPage() {
   const displayName = user?.user_metadata?.full_name || 'MIS User';
   const displayDept = user?.user_metadata?.department || 'IT Department';
   const initials = displayName.split(' ').map((n: any) => n[0]).join('').toUpperCase().substring(0, 2);
-
-  const filteredData = inventoryList.filter(item => 
-    (item.user_full_name || item.item_name || "").toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  
-  // Extract unique departments for the filter dropdown
-  const uniqueDepartments = Array.from(new Set(inventoryList.map(item => item.department?.toUpperCase()).filter(Boolean)));
 
   return (
     <div className="flex h-[100dvh] bg-slate-50 text-slate-900 font-sans overflow-hidden relative text-[11px]">
@@ -515,7 +539,7 @@ export default function InventoryPage() {
                         <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">RAM</th>
                         <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">ROM / Capacity</th>
                         <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">Storage drive</th>
-                        <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">KASPERSKY</th>
+                        <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">EPS</th>
                         <th colSpan={3} className="px-3 py-2 border-r border-b border-slate-200 text-center bg-blue-50 font-bold uppercase text-slate-600 text-[10px]">PHONE</th>
                         <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center bg-blue-50 font-bold uppercase text-slate-600 text-[10px]">PRINTER</th>
                         <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center bg-blue-50 font-bold uppercase text-slate-600 text-[10px]">BACKUP</th>
@@ -643,9 +667,11 @@ export default function InventoryPage() {
                <h2 className="text-xs sm:text-sm">{editingId ? 'Edit' : 'New'} Record ({activeCategory})</h2>
                <button type="button" onClick={() => setIsModalOpen(false)}><X size={20} /></button>
             </div>
-            <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 overflow-y-auto">
+            
+            {/* Scrollable Form Body */}
+            <div className="p-4 sm:p-6 overflow-y-auto">
               {activeCategory === 'Personal Computer' ? (
-                <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="col-span-full font-bold text-slate-800 border-b pb-1 mb-2">User & Device Info</div>
                   <InputGroup label="Building" value={formData.building} onChange={(v) => setFormData({...formData, building: v})} type="select" options={['Admin', 'Security', 'IEM 1', 'IEM 2', 'QC', 'LCP', '69 KB Sub Station', 'Boiler / Demi', 'Contractor',]} />
                   <InputGroup label="Department" value={formData.department} onChange={(v) => setFormData({...formData, department: v})} type="select" options={['President Office', 'VP - Office', 'MIS', 'HRD', 'TECHNICAL', 'EHS', 'ENGINEERING', 'MATERIALS', 'MARKETING & SALES', 'FINANCE & ACCOUNTING', 'SECURITY', 'IEM 1', 'IEM 2', 'QC', 'AVP', 'SHIFT MANAGERS', 'CONTRACTOR', ]} />
@@ -668,8 +694,6 @@ export default function InventoryPage() {
                   <InputGroup label="Kaspersky" value={formData.kaspersky} onChange={(v) => setFormData({...formData, kaspersky: v})} type="select" options={['Active', 'Not Active']} />
 
                   <div className="col-span-full font-bold text-slate-800 border-b pb-1 mb-2 mt-2">Processor Details</div>
-                  
-                  {/* --- DYNAMIC BRAND, GENERATION, AND CPU SELECTS --- */}
                   <InputGroup 
                     label="Brand" 
                     value={formData.processor_brand || 'Intel'} 
@@ -695,14 +719,11 @@ export default function InventoryPage() {
                     type="select" 
                     options={cpuOptionsMap[formData.processor_brand || 'Intel'] || ['N/A']} 
                   />
-                  {/* ------------------------------------------- */}
-
                   <InputGroup label="Model Number" placeholder="Ex: 12400F" value={formData.processor_model || ''} onChange={(v) => setFormData({...formData, processor_model: v})} />
 
                   <div className="col-span-full font-bold text-slate-800 border-b pb-1 mb-2 mt-2">Storage & Memory</div>
                   <InputGroup label="RAM" value={formData.ram} onChange={(v) => setFormData({...formData, ram: v})} type="select" options={['4GB', '8GB', '16GB', '32GB', '64GB']} />
                   
-                  {/* ROM/CAPACITY SELECT */}
                   <InputGroup 
                     label="ROM / Capacity" 
                     value={['128GB', '240GB', '256GB', '480GB', '500GB', '512GB', '1TB', '2TB'].includes(formData.rom || '') ? formData.rom || '256GB' : 'Others'} 
@@ -710,7 +731,6 @@ export default function InventoryPage() {
                     type="select" 
                     options={['128GB', '240GB', '256GB', '480GB', '500GB', '512GB', '1TB', '2TB', 'Others']} 
                   />
-                  {/* CUSTOM ROM FIELD IF 'OTHERS' IS SELECTED (or if it holds a custom value not in the list) */}
                   {(!['128GB', '240GB', '256GB', '480GB', '500GB', '512GB', '1TB', '2TB'].includes(formData.rom || '') || formData.rom === '') && (
                     <InputGroup label="Specify Capacity" placeholder="Ex: 4TB" value={formData.rom || ''} onChange={(v) => setFormData({...formData, rom: v})} required />
                   )}
@@ -719,45 +739,105 @@ export default function InventoryPage() {
                   
                   <div className="col-span-full font-bold text-slate-800 border-b pb-1 mb-2 mt-2">Peripherals</div>
                   
-                  {/* --- PHONE LOGIC --- */}
-                  <InputGroup label="Phone Connected?" value={formData.phone || 'No'} onChange={(v) => {
-                    setFormData({
-                      ...formData, 
-                      phone: v, 
-                      phone_connection_type: v.toLowerCase() === 'yes' ? 'Local' : '',
-                      phone_type: v.toLowerCase() === 'yes' ? 'Landline' : '',
-                      phone_number: ''
-                    })
-                  }} type="select" options={['Yes', 'No']} />
-                  
-                  {formData.phone?.toLowerCase() === 'yes' && (
-                    <>
-                      <InputGroup 
-                        label="Connection Type" 
-                        value={formData.phone_connection_type || 'Local'} 
-                        onChange={(v) => {
-                          setFormData({
-                            ...formData, 
-                            phone_connection_type: v, 
-                            phone_type: v === 'Local' ? 'Landline' : 'Fanvil',
-                            phone_number: ''
-                          });
-                        }} 
-                        type="select" 
-                        options={['Local', 'IP']} 
-                      />
-                      
-                      <InputGroup 
-                        label="Phone Type" 
-                        value={formData.phone_type || (formData.phone_connection_type === 'Local' ? 'Landline' : 'Fanvil')} 
-                        onChange={(v) => setFormData({...formData, phone_type: v})} 
-                        type="select" 
-                        options={formData.phone_connection_type === 'Local' ? ['Landline', 'Local'] : ['Fanvil', 'Cisco']} 
-                      />
+                  {/* --- MULTI-PHONE LOGIC --- */}
+                  <div className="col-span-full border border-slate-200 rounded-lg p-4 bg-slate-50 flex flex-col gap-4">
+                    <div className="w-full sm:w-1/3">
+                      <InputGroup label="Phone Connected?" value={formData.phone || 'No'} onChange={(v) => {
+                        setFormData({
+                          ...formData, 
+                          phone: v, 
+                          phone_quantity: 1,
+                          phone_conn_types: ['Local'],
+                          phone_types: ['Landline'],
+                          phone_numbers: ['']
+                        })
+                      }} type="select" options={['Yes', 'No']} />
+                    </div>
+                    
+                    {formData.phone?.toLowerCase() === 'yes' && (
+                      <div className="flex flex-col gap-3 border-t border-slate-200 pt-4">
+                        <div className="w-full sm:w-1/3">
+                          <InputGroup 
+                            label="How many phones?" 
+                            type="select" 
+                            value={formData.phone_quantity || 1} 
+                            options={['1', '2', '3', '4', '5']} 
+                            onChange={(v) => {
+                              const qty = parseInt(v as string) || 1;
+                              const cTypes = [...(formData.phone_conn_types || [])];
+                              const pTypes = [...(formData.phone_types || [])];
+                              const pNums = [...(formData.phone_numbers || [])];
+                              
+                              while (cTypes.length < qty) cTypes.push('Local');
+                              while (pTypes.length < qty) pTypes.push('Landline');
+                              while (pNums.length < qty) pNums.push('');
+                              
+                              setFormData({ 
+                                  ...formData, 
+                                  phone_quantity: qty, 
+                                  phone_conn_types: cTypes, 
+                                  phone_types: pTypes, 
+                                  phone_numbers: pNums 
+                              });
+                            }} 
+                          />
+                        </div>
 
-                      <InputGroup label="Phone Number" placeholder="Ex: 101" value={formData.phone_number || ''} onChange={(v) => setFormData({...formData, phone_number: v})} required />
-                    </>
-                  )}
+                        {/* RENDER DYNAMIC PHONE ROWS */}
+                        {Array.from({ length: formData.phone_quantity || 1 }).map((_, i) => (
+                          <div key={i} className="flex flex-col sm:flex-row items-center gap-3 w-full bg-white p-3 rounded shadow-sm border border-slate-100">
+                            <div className="w-full sm:w-[15%] text-xs font-black text-slate-400 uppercase flex items-center gap-2 mb-2 sm:mb-0">
+                               <Phone size={14} className="text-red-900" /> Phone {i + 1}
+                            </div>
+                            
+                            <div className="w-full sm:w-auto flex-1">
+                              <InputGroup 
+                                label="Conn. Type" 
+                                value={formData.phone_conn_types?.[i] || 'Local'} 
+                                onChange={(v) => {
+                                  const newC = [...formData.phone_conn_types];
+                                  newC[i] = v;
+                                  const newT = [...formData.phone_types];
+                                  newT[i] = v === 'Local' ? 'Landline' : 'Fanvil';
+                                  setFormData({ ...formData, phone_conn_types: newC, phone_types: newT });
+                                }} 
+                                type="select" 
+                                options={['Local', 'IP']} 
+                              />
+                            </div>
+                            
+                            <div className="w-full sm:w-auto flex-1">
+                              <InputGroup 
+                                label="Phone Type" 
+                                value={formData.phone_types?.[i] || (formData.phone_conn_types?.[i] === 'Local' ? 'Landline' : 'Fanvil')} 
+                                onChange={(v) => {
+                                  const newT = [...formData.phone_types];
+                                  newT[i] = v;
+                                  setFormData({...formData, phone_types: newT});
+                                }} 
+                                type="select" 
+                                options={formData.phone_conn_types?.[i] === 'Local' ? ['Landline', 'Local'] : ['Fanvil', 'Cisco']} 
+                              />
+                            </div>
+
+                            <div className="w-full sm:w-auto flex-1">
+                              <InputGroup 
+                                label="Number" 
+                                placeholder="Ex: 101" 
+                                value={formData.phone_numbers?.[i] || ''} 
+                                onChange={(v) => {
+                                  const newN = [...formData.phone_numbers];
+                                  newN[i] = v;
+                                  setFormData({...formData, phone_numbers: newN});
+                                }} 
+                                required 
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   {/* ------------------- */}
                   
                   <InputGroup label="Printer Connected?" value={formData.printer || 'No'} onChange={(v) => setFormData({...formData, printer: v})} type="select" options={['Yes', 'No']} />
@@ -765,13 +845,13 @@ export default function InventoryPage() {
                     <>
                       <InputGroup 
                         label="Printer Name" 
-                        value={['Epson L3110', 'Epson L3210', 'Brother L210'].includes(formData.printer_name || '') ? formData.printer_name || 'Epson L3110' : 'Others'} 
+                        value={printerList.some(o => o.toUpperCase() === (formData.printer_name || '').toUpperCase()) ? (printerList.find(o => o.toUpperCase() === (formData.printer_name || '').toUpperCase()) || 'Epson L3110') : 'Others'} 
                         onChange={(v) => setFormData({...formData, printer_name: v === 'Others' ? '' : v})} 
                         type="select" 
-                        options={['Epson L3110', 'Epson L3210', 'Brother L210', 'Others']} 
+                        options={[...printerList, 'Others']} 
                       />
                       {/* CUSTOM PRINTER NAME FIELD IF 'OTHERS' IS SELECTED */}
-                      {(!['Epson L3110', 'Epson L3210', 'Brother L210'].includes(formData.printer_name || '') || formData.printer_name === '') && (
+                      {(!printerList.some(o => o.toUpperCase() === (formData.printer_name || '').toUpperCase()) || formData.printer_name === '') && (
                         <InputGroup label="Specify Printer" placeholder="Ex: HP DeskJet" value={formData.printer_name || ''} onChange={(v) => setFormData({...formData, printer_name: v})} required />
                       )}
                     </>
@@ -784,9 +864,9 @@ export default function InventoryPage() {
                     <InputGroup label="Backup Schedule" value={formData.backup_schedule || 'Daily'} onChange={(v) => setFormData({...formData, backup_schedule: v})} type="select" options={['Daily', 'Weekly', 'Monthly']} />
                   )}
 
-                </>
+                </div>
               ) : (
-                <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                   <InputGroup label="Item Name" value={formData.item_name || ''} onChange={(v) => setFormData({...formData, item_name: v})} type="select" options={[
                     'Monitor', 'Keyboard', 'Mouse', 'System Unit', 'RAM', 'SSD/HDD', 'AVR/UPS', 'Printer', 'Laptop', 'Router/Switch',
                     'RJ45 Connectors', 'Power Cable', 'VGA/HDMI Cable', 'LAN Cable'
@@ -799,7 +879,7 @@ export default function InventoryPage() {
                     <InputGroup label="Fullname" placeholder="Enter assigned user" value={formData.user_full_name} onChange={(v) => setFormData({...formData, user_full_name: v})} required />
                   )}
                   <InputGroup label="Location" value={formData.location || ''} onChange={(v) => setFormData({...formData, location: v})} type="select" options={['MIS STORAGE', 'MIS OFFICE', 'CABINET A', 'PLANT STORAGE']} />
-                </>
+                </div>
               )}
             </div>
             
@@ -846,10 +926,10 @@ function TabBtn({ label, icon, active, onClick }: any) {
 
 function InputGroup({ label, placeholder, value, onChange, required, type = 'text', options = [], maxLength }: InputGroupProps) {
   return (
-    <div className="flex flex-col gap-1.5 text-left">
+    <div className="flex flex-col gap-1.5 text-left w-full">
       <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{label} {required && '*'}</label>
       {type === 'select' ? (
-        <select value={value} onChange={e => onChange(e.target.value)} className="p-2.5 border border-slate-200 rounded-lg text-xs outline-none bg-white focus:ring-2 focus:ring-red-900/10 focus:border-red-900 transition-all shadow-sm max-h-60 overflow-y-auto uppercase">
+        <select value={value} onChange={e => onChange(e.target.value)} className="p-2.5 border border-slate-200 rounded-lg text-xs outline-none bg-white focus:ring-2 focus:ring-red-900/10 focus:border-red-900 transition-all shadow-sm max-h-60 overflow-y-auto uppercase w-full">
           {options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
         </select>
       ) : (
@@ -863,7 +943,7 @@ function InputGroup({ label, placeholder, value, onChange, required, type = 'tex
             onChange(type === 'text' ? val.toUpperCase() : val);
           }} 
           maxLength={maxLength}
-          className="p-2.5 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-red-900/10 focus:border-red-900 transition-all shadow-sm uppercase" 
+          className="p-2.5 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-red-900/10 focus:border-red-900 transition-all shadow-sm uppercase w-full" 
         />
       )}
     </div>
