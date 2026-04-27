@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { 
@@ -92,7 +92,12 @@ const printerList = ['Epson L3110', 'Epson L3210', 'Brother L210'];
 export default function InventoryPage() {
   const [activeCategory, setActiveCategory] = useState('Personal Computer');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedExportDept, setSelectedExportDept] = useState('All Departments'); 
+  
+  // --- MULTI-SELECT STATE ---
+  const [selectedExportDepts, setSelectedExportDepts] = useState<string[]>([]);
+  const [showDeptFilter, setShowDeptFilter] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -159,7 +164,7 @@ export default function InventoryPage() {
 
       if (error) throw error;
       setInventoryList(data || []);
-      setSelectedExportDept('All Departments'); 
+      setSelectedExportDepts([]); // Reset filter on category change/fetch
     } catch (error: any) {
       console.error("Error fetching data:", error.message);
       setInventoryList([]);
@@ -171,6 +176,21 @@ export default function InventoryPage() {
   useEffect(() => {
     if (user) fetchData();
   }, [activeCategory, user]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Kung ang gi-click kay DILI apil sa sulod sa atong filter container, isira ang menu
+      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+        setShowDeptFilter(false);
+      }
+    };
+    
+    if (showDeptFilter) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showDeptFilter]);
 
   const verifyPassword = async (password: string) => {
     if (!user?.email) return false;
@@ -242,13 +262,30 @@ export default function InventoryPage() {
   };
 
   // Extract unique departments for the filter dropdown
-  const uniqueDepartments = Array.from(new Set(inventoryList.map(item => item.department?.toUpperCase()).filter(Boolean)));
+  const uniqueDepartments = Array.from(new Set(inventoryList.map(item => item.department?.toUpperCase()).filter(Boolean))).sort();
 
-  // --- FILTER DATA FOR BOTH TABLE DISPLAY AND EXPORT ---
+  const toggleDept = (dept: string) => {
+    setSelectedExportDepts(prev => 
+      prev.includes(dept) ? prev.filter(d => d !== dept) : [...prev, dept]
+    );
+  };
+
+  // --- FILTER & SORT DATA ---
   const filteredData = inventoryList.filter(item => {
     const matchesSearch = (item.user_full_name || item.item_name || "").toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDept = selectedExportDept === 'All Departments' || item.department?.toUpperCase() === selectedExportDept.toUpperCase();
+    const itemDept = item.department?.toUpperCase() || "";
+    // Match if no specific departments are selected (array is empty), or if the item's dept is in the array
+    const matchesDept = selectedExportDepts.length === 0 || selectedExportDepts.includes(itemDept);
+    
     return matchesSearch && matchesDept;
+  }).sort((a, b) => {
+    // If specific departments are selected and we are viewing Personal Computers, sort by device_name naturally
+    if (selectedExportDepts.length > 0 && activeCategory === 'Personal Computer') {
+      const deviceA = a.device_name || "";
+      const deviceB = b.device_name || "";
+      return deviceA.localeCompare(deviceB, undefined, { numeric: true, sensitivity: 'base' });
+    }
+    return 0; 
   });
 
   const handleExportExcel = () => {
@@ -299,7 +336,7 @@ export default function InventoryPage() {
 
     worksheet['!cols'] = colWidths;
     
-    const fileNameSuffix = selectedExportDept === 'All Departments' ? '' : `_${selectedExportDept.replace(/ /g, '_')}`;
+    const fileNameSuffix = selectedExportDepts.length === 0 ? '' : `_Filtered`;
     XLSX.writeFile(workbook, `MVC_Inventory_${activeCategory.replace(/ /g, '_')}${fileNameSuffix}.xlsx`);
   };
 
@@ -313,7 +350,10 @@ export default function InventoryPage() {
     doc.setFontSize(18);
     doc.text("MABUHAY VINYL CORPORATION - ILIGAN PLANT", 14, 15);
     doc.setFontSize(11);
-    doc.text(`Department: ${selectedExportDept === 'All Departments' ? 'IT (All Records)' : selectedExportDept}`, 14, 22);
+    
+    const deptString = selectedExportDepts.length === 0 ? 'IT (All Records)' : selectedExportDepts.join(', ');
+    doc.text(`Department: ${deptString}`, 14, 22);
+    
     doc.setFontSize(9);
     doc.text(`Inventory Report: ${activeCategory}`, 14, 28);
 
@@ -344,7 +384,7 @@ export default function InventoryPage() {
 
     autoTable(doc, { head: [tableColumn], body: tableRows as any, startY: 30, styles: { fontSize: 7 }, headStyles: { fillColor: [127, 0, 0] } });
     
-    const fileNameSuffix = selectedExportDept === 'All Departments' ? '' : `_${selectedExportDept.replace(/ /g, '_')}`;
+    const fileNameSuffix = selectedExportDepts.length === 0 ? '' : `_Filtered`;
     doc.save(`MVC_Inventory_${activeCategory.replace(/ /g, '_')}${fileNameSuffix}.pdf`);
   };
 
@@ -495,20 +535,33 @@ export default function InventoryPage() {
 
             {/* ACTION BUTTONS & FILTER CONTAINER */}
             <div className="flex flex-col sm:flex-row gap-2 w-full xl:w-auto">
-              {/* --- DEPARTMENT EXPORT FILTER --- */}
-              <div className="flex items-center justify-center bg-white border border-slate-200 rounded-lg shadow-sm px-3 py-2 w-full sm:w-auto shrink-0">
+              
+              {/* --- MULTI-DEPARTMENT EXPORT FILTER --- */}
+              <div 
+                ref={filterRef}
+                className="relative flex items-center justify-center bg-white border border-slate-200 rounded-lg shadow-sm px-3 py-2 w-full sm:w-auto shrink-0 cursor-pointer hover:bg-slate-50 transition-colors" 
+                onClick={() => setShowDeptFilter(!showDeptFilter)}
+              >
                  <Filter size={14} className="text-slate-400 mr-2 shrink-0" />
-                 <select 
-                   className="text-[10px] font-bold uppercase text-slate-600 outline-none bg-transparent cursor-pointer w-full sm:w-auto text-center sm:text-left"
-                   value={selectedExportDept}
-                   onChange={(e) => setSelectedExportDept(e.target.value)}
-                   style={{ textAlignLast: 'center' }}
-                 >
-                   <option value="All Departments">All Departments</option>
-                   {uniqueDepartments.map((dept, i) => (
-                     <option key={i} value={dept as string}>{dept}</option>
-                   ))}
-                 </select>
+                 <span className="text-[10px] font-bold uppercase text-slate-600 truncate max-w-[120px] sm:max-w-[150px]">
+                   {selectedExportDepts.length === 0 ? 'All Departments' : `${selectedExportDepts.length} Selected`}
+                 </span>
+
+                 {/* Custom Checkbox Dropdown Menu */}
+                 {showDeptFilter && (
+                   <div className="absolute top-full mt-1 right-0 sm:left-0 w-56 bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-60 overflow-y-auto p-2" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded cursor-pointer mb-1 border-b border-slate-100" onClick={() => setSelectedExportDepts([])}>
+                        <input type="checkbox" checked={selectedExportDepts.length === 0} readOnly className="accent-red-900 pointer-events-none" />
+                        <span className="text-[10px] font-bold uppercase text-slate-600">All Departments</span>
+                      </div>
+                      {uniqueDepartments.map((dept, i) => (
+                        <div key={i} className="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded cursor-pointer" onClick={() => toggleDept(dept as string)}>
+                          <input type="checkbox" checked={selectedExportDepts.includes(dept as string)} readOnly className="accent-red-900 pointer-events-none" />
+                          <span className="text-[10px] font-bold uppercase text-slate-600">{dept}</span>
+                        </div>
+                      ))}
+                   </div>
+                 )}
               </div>
               
               <button onClick={handleExportPDF} className="w-full sm:w-auto flex-1 flex items-center justify-center border border-red-200 gap-2 px-4 py-2 bg-red-50 text-red-800 text-[10px] font-bold rounded-lg hover:bg-red-100 transition-all shadow-sm whitespace-nowrap"><Download size={14} /> PDF</button>
