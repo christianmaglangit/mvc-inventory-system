@@ -44,6 +44,7 @@ interface InventoryItem {
   printer_name?: string;
   backup?: string; 
   backup_schedule?: string; 
+  backup_time?: string; 
   
   // Computer Parts
   item_name?: string;
@@ -122,7 +123,7 @@ export default function InventoryPage() {
     phone_numbers: [''],
     
     printer: 'No', printer_name: 'Epson L3110', 
-    backup: 'No', backup_schedule: 'Select', 
+    backup: 'No', backup_schedule: 'Select', backup_time: 'Select',
     // Parts Form Fields
     item_name: 'Monitor', brand_model: 'Dell', serial_number: '', quantity: 1, unit: 'Pcs', location: 'MIS STORAGE'
   };
@@ -180,7 +181,6 @@ export default function InventoryPage() {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // Kung ang gi-click kay DILI apil sa sulod sa atong filter container, isira ang menu
       if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
         setShowDeptFilter(false);
       }
@@ -232,7 +232,8 @@ export default function InventoryPage() {
           printer: formData.printer, 
           printer_name: formData.printer?.toLowerCase() === 'yes' ? formData.printer_name : '',
           backup: formData.backup, 
-          backup_schedule: formData.backup?.toLowerCase() === 'yes' ? formData.backup_schedule : '' 
+          backup_schedule: formData.backup?.toLowerCase() === 'yes' ? formData.backup_schedule : '',
+          backup_time: formData.backup?.toLowerCase() === 'yes' ? formData.backup_time : ''
         };
       } else {
         payload = { ...payload,
@@ -274,12 +275,10 @@ export default function InventoryPage() {
   const filteredData = inventoryList.filter(item => {
     const matchesSearch = (item.user_full_name || item.item_name || "").toLowerCase().includes(searchTerm.toLowerCase());
     const itemDept = item.department?.toUpperCase() || "";
-    // Match if no specific departments are selected (array is empty), or if the item's dept is in the array
     const matchesDept = selectedExportDepts.length === 0 || selectedExportDepts.includes(itemDept);
     
     return matchesSearch && matchesDept;
   }).sort((a, b) => {
-    // If specific departments are selected and we are viewing Personal Computers, sort by device_name naturally
     if (selectedExportDepts.length > 0 && activeCategory === 'Personal Computer') {
       const deviceA = a.device_name || "";
       const deviceB = b.device_name || "";
@@ -298,7 +297,7 @@ export default function InventoryPage() {
 
     // Define Headers
     const headers = activeCategory === 'Personal Computer'
-      ? ["Building", "Department", "User Full Name", "Computer Type", "Email", "Device Name", "OS Edition", "OS Version", "Status", "MS Office Version", "MS Office Status", "Processor Brand", "Processor Gen", "Processor CPU", "Processor Model", "RAM", "ROM/Capacity", "Storage Drive", "EPS", "Phone Connected", "Phone Conn Type", "Phone Type", "Phone Number", "Printer Connected", "Printer Name", "Backup Configured", "Backup Schedule"]
+      ? ["Building", "Department", "User Full Name", "Computer Type", "Email", "Device Name", "OS Edition", "OS Version", "Status", "MS Office Version", "MS Office Status", "Processor Brand", "Processor Gen", "Processor CPU", "Processor Model", "RAM", "ROM/Capacity", "Storage Drive", "EPS", "Phone Connected", "Phone Conn Type", "Phone Type", "Phone Number", "Printer Connected", "Printer Name", "Backup Configured", "Backup Schedule", "Backup Time"]
       : ["Item Name", "Brand/Model", "User", "Quantity", "Unit", "Status", "Location"];
 
     const tableData = filteredData.map(item => {
@@ -311,7 +310,8 @@ export default function InventoryPage() {
           item.processor_model || "", item.ram || "", item.rom || "", item.storage_drive || "", item.kaspersky || "",
           item.phone || "", isPhone ? item.phone_connection_type || "" : "None", isPhone ? item.phone_type || "" : "None", isPhone ? item.phone_number || "" : "None",
           item.printer || "", item.printer?.toLowerCase() === 'yes' ? item.printer_name || "" : "None",
-          item.backup || "", item.backup?.toLowerCase() === 'yes' ? item.backup_schedule || "" : "None"
+          item.backup || "", item.backup?.toLowerCase() === 'yes' ? item.backup_schedule || "" : "None",
+          item.backup?.toLowerCase() === 'yes' ? item.backup_time || "" : "None"
         ];
       } else {
         return [
@@ -372,7 +372,7 @@ export default function InventoryPage() {
             item.printer?.toLowerCase() === 'yes' ? item.printer_name : "None",
             isPhone ? `${item.phone_connection_type}-${item.phone_type}` : "None",
             isPhone ? item.phone_number : "None",
-            item.backup?.toLowerCase() === 'yes' ? item.backup_schedule : "None"
+            item.backup?.toLowerCase() === 'yes' ? `${item.backup_schedule || ''} @ ${item.backup_time || ''}` : "None"
           ]
         } else {
             return [
@@ -595,7 +595,7 @@ export default function InventoryPage() {
                         <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">EPS</th>
                         <th colSpan={3} className="px-3 py-2 border-r border-b border-slate-200 text-center bg-blue-50 font-bold uppercase text-slate-600 text-[10px]">PHONE</th>
                         <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center bg-blue-50 font-bold uppercase text-slate-600 text-[10px]">PRINTER</th>
-                        <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center bg-blue-50 font-bold uppercase text-slate-600 text-[10px]">BACKUP</th>
+                        <th colSpan={3} className="px-3 py-2 border-r border-b border-slate-200 text-center bg-blue-50 font-bold uppercase text-slate-600 text-[10px]">BACKUP</th>
                         <th rowSpan={2} className="px-4 py-3 border-b text-center sticky right-0 bg-blue-50 border-l border-slate-200 align-middle z-40 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)] font-bold uppercase text-slate-600 text-[10px]">Actions</th>
                       </tr>
                       <tr>
@@ -620,6 +620,7 @@ export default function InventoryPage() {
                         {/* BACKUP */}
                         <th className="px-3 py-2 border-r border-b border-slate-200 bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">Config.</th>
                         <th className="px-3 py-2 border-r border-b border-slate-200 bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">Schedule</th>
+                        <th className="px-3 py-2 border-r border-b border-slate-200 bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">Time</th>
                       </tr>
                     </>
                   ) : (
@@ -636,7 +637,7 @@ export default function InventoryPage() {
                 </thead>
                 <tbody className="text-center relative z-0">
                   {loading ? (
-                    <tr><td colSpan={27} className="p-20 text-center border-b border-slate-100"><Loader2 className="animate-spin inline text-red-900" size={32}/></td></tr>
+                    <tr><td colSpan={28} className="p-20 text-center border-b border-slate-100"><Loader2 className="animate-spin inline text-red-900" size={32}/></td></tr>
                   ) : filteredData.length > 0 ? (
                     filteredData.map((item) => (
                       <tr key={item.id} className="hover:bg-slate-50/80 transition-colors group text-slate-700">
@@ -675,6 +676,7 @@ export default function InventoryPage() {
                             <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.printer?.toLowerCase() === 'yes' ? item.printer_name : '-'}</td>
                             <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.backup}</td>
                             <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.backup?.toLowerCase() === 'yes' ? item.backup_schedule : '-'}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.backup?.toLowerCase() === 'yes' ? item.backup_time : '-'}</td>
                           </>
                         ) : (
                           <>
@@ -698,7 +700,7 @@ export default function InventoryPage() {
                       </tr>
                     ))
                   ) : (
-                    <tr><td colSpan={27} className="p-10 text-center border-b border-slate-100 italic text-slate-400 uppercase text-[10px]">No records found</td></tr>
+                    <tr><td colSpan={28} className="p-10 text-center border-b border-slate-100 italic text-slate-400 uppercase text-[10px]">No records found</td></tr>
                   )}
                 </tbody>
               </table>
@@ -914,14 +916,23 @@ export default function InventoryPage() {
                   <div className="col-span-full font-bold text-slate-800 border-b pb-1 mb-2 mt-2">Backup Settings</div>
                   <InputGroup label="Backup Configured?" value={formData.backup || 'No'} onChange={(v) => setFormData({...formData, backup: v})} type="select" options={['Yes', 'No']} />
                   {formData.backup?.toLowerCase() === 'yes' && (
-                  <InputGroup 
-                    label="Backup Schedule" 
-                    value={formData.backup_schedule || 'Select'} 
-                    onChange={(v) => setFormData({...formData, backup_schedule: v})} 
-                    type="select" 
-                    options={['Select', 'Daily', 'Weekly', 'Monthly']} 
-                  />
-                )}
+                    <>
+                      <InputGroup 
+                        label="Backup Schedule" 
+                        value={formData.backup_schedule || 'Select'} 
+                        onChange={(v) => setFormData({...formData, backup_schedule: v})} 
+                        type="select" 
+                        options={['Select', 'Daily', 'Weekly', 'Monthly']} 
+                      />
+                      <InputGroup 
+                        label="Backup Time" 
+                        value={formData.backup_time || 'Select'} 
+                        onChange={(v) => setFormData({...formData, backup_time: v})} 
+                        type="select" 
+                        options={['Select', '08:00', '12:00', '17:00']} 
+                      />
+                    </>
+                  )}
 
                 </div>
               ) : (
