@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { 
   LayoutDashboard, HardDrive, Server, Activity, Laptop, 
-  AlertTriangle, ShieldAlert, LogOut, Loader2, Menu, X 
+  AlertTriangle, ShieldAlert, LogOut, Loader2, Menu, X, Clock
 } from 'lucide-react';
 
 export default function SummaryDashboard() {
@@ -18,7 +18,8 @@ export default function SummaryDashboard() {
     totalEquipment: 0,
     activePC: 0,
     partsInStorage: 0,
-    alerts: [] as any[]
+    alerts: [] as any[],
+    recentlyAdded: [] as any[] // Bag-o: Para sa mga na-add karon
   });
 
   useEffect(() => {
@@ -38,7 +39,8 @@ export default function SummaryDashboard() {
           .select('*', { count: 'exact' })
           .eq('user_id', currentUser.id);
 
-        const { count: partsCount } = await supabase
+        // GI-UPDATE: Gi-apil ang data sa parts
+        const { count: partsCount, data: partsData } = await supabase
           .from('inventory_computer_parts')
           .select('*', { count: 'exact' })
           .eq('user_id', currentUser.id);
@@ -47,11 +49,29 @@ export default function SummaryDashboard() {
           pc.kaspersky?.toLowerCase().includes('not active')
         ) || [];
 
+        // LOGIC PARA SA ADDED TODAY
+        const pcs = (pcData || []).map(item => ({ ...item, category: 'PC' }));
+        const parts = (partsData || []).map(item => ({ ...item, category: 'Part' }));
+        const allItems = [...pcs, ...parts];
+
+        const today = new Date();
+        const isToday = (dateString: string) => {
+            const date = new Date(dateString);
+            return date.getDate() === today.getDate() &&
+                   date.getMonth() === today.getMonth() &&
+                   date.getFullYear() === today.getFullYear();
+        };
+
+        const addedToday = allItems
+          .filter(item => item.created_at && isToday(item.created_at))
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()); // Latest first
+
         setStats({
           totalEquipment: (pcCount || 0) + (partsCount || 0),
           activePC: pcCount || 0,
           partsInStorage: partsCount || 0,
-          alerts: expiredKaspersky
+          alerts: expiredKaspersky,
+          recentlyAdded: addedToday
         });
       } catch (error) {
         console.error("Error connecting inventory:", error);
@@ -156,22 +176,62 @@ export default function SummaryDashboard() {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-2 bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-                      <h3 className="font-bold text-slate-800 mb-6">Inventory Breakdown</h3>
-                      <div className="space-y-5">
-                        <CategoryBar label="Workstations (PC)" count={stats.activePC} percentage={(stats.activePC / stats.totalEquipment) * 100 || 0} color="bg-blue-600" />
-                        <CategoryBar label="Spare Parts / Storage" count={stats.partsInStorage} percentage={(stats.partsInStorage / stats.totalEquipment) * 100 || 0} color="bg-amber-500" />
+                  
+                  {/* --- NEW RECENTLY ADDED SECTION --- */}
+                  <div className="lg:col-span-2 bg-white border border-slate-200 rounded-lg p-6 shadow-sm flex flex-col">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-bold text-slate-800">Added Today</h3>
+                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full uppercase">
+                          {stats.recentlyAdded.length} Items
+                        </span>
+                      </div>
+                      
+                      <div className="flex-1 overflow-y-auto max-h-[300px] pr-2 custom-scrollbar">
+                        {stats.recentlyAdded.length > 0 ? (
+                          <div className="space-y-3">
+                            {stats.recentlyAdded.map((item, idx) => (
+                              <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-lg hover:border-blue-200 transition-colors group">
+                                <div className="flex items-center gap-3">
+                                  <div className={`p-2 rounded bg-white border ${item.category === 'PC' ? 'text-emerald-600 border-emerald-100' : 'text-amber-600 border-amber-100'}`}>
+                                    {item.category === 'PC' ? <Laptop size={16} /> : <Activity size={16} />}
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-bold text-slate-700 uppercase">
+                                      {item.category === 'PC' ? item.user_full_name : item.item_name}
+                                    </p>
+                                    <p className="text-[10px] text-slate-500 font-medium uppercase mt-0.5">
+                                      {item.category === 'PC' 
+                                        ? `PC • ${item.department} • ${item.device_name}` 
+                                        : `Part • ${item.brand_model} • Qty: ${item.quantity}`
+                                      }
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold bg-white px-2 py-1 rounded border border-slate-100 shadow-sm">
+                                  <Clock size={12} className="text-blue-500" />
+                                  {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="h-full min-h-[200px] flex flex-col items-center justify-center text-slate-400 space-y-2">
+                            <HardDrive size={32} className="text-slate-200" />
+                            <p className="text-xs font-bold uppercase tracking-widest">No items added today</p>
+                          </div>
+                        )}
                       </div>
                   </div>
 
-                  <div className="lg:col-span-1 bg-white border border-red-200 rounded-lg overflow-hidden shadow-sm">
-                      <div className="bg-red-50 border-b border-red-100 p-4 flex items-center gap-2">
+                  {/* --- ACTION CENTER --- */}
+                  <div className="lg:col-span-1 bg-white border border-red-200 rounded-lg overflow-hidden shadow-sm flex flex-col h-full">
+                      <div className="bg-red-50 border-b border-red-100 p-4 flex items-center gap-2 shrink-0">
                         <ShieldAlert size={18} className="text-red-700" />
                         <h3 className="font-bold text-red-900">Action Center</h3>
                       </div>
-                      <div className="p-2 divide-y divide-slate-100">
+                      <div className="p-2 divide-y divide-slate-100 flex-1 overflow-y-auto max-h-[300px] custom-scrollbar">
                         {stats.alerts.length > 0 ? stats.alerts.map((alert, idx) => (
-                          <AlertItem key={idx} title="Kaspersky Expired" desc={`User: ${alert.user_full_name}`} type="critical" />
+                          <AlertItem key={idx} title="Kaspersky Expired" desc={`User: ${alert.user_full_name} (${alert.department})`} type="critical" />
                         )) : (
                           <div className="p-4 text-center text-xs text-slate-400 italic">No critical alerts for now.</div>
                         )}
@@ -188,11 +248,18 @@ export default function SummaryDashboard() {
           Developed by Christian B. Maglangit
         </footer>
       </main>
+
+      <style dangerouslySetInnerHTML={{__html: `
+        .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; } 
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+      `}} />
     </div>
   );
 }
 
-// --- HELPER COMPONENTS REMAIN THE SAME ---
+// --- HELPER COMPONENTS ---
 function NavItem({ icon, label, active = false, onClick }: any) {
   return (
     <button onClick={onClick} className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-all text-xs font-medium relative ${active ? 'bg-red-50 text-red-900 font-bold border-l-4 border-red-900' : 'text-slate-500 hover:bg-slate-50'}`}>
@@ -216,28 +283,14 @@ function KpiCard({ title, value, trend, icon, color, isAlert }: any) {
   );
 }
 
-function CategoryBar({ label, count, percentage, color }: any) {
-  return (
-    <div>
-      <div className="flex justify-between text-xs font-semibold mb-1.5">
-        <span>{label}</span>
-        <span className="text-slate-500">{count} items</span>
-      </div>
-      <div className="w-full bg-slate-100 rounded-full h-1.5">
-        <div className={`${color} h-1.5 rounded-full transition-all duration-500`} style={{ width: `${percentage}%` }}></div>
-      </div>
-    </div>
-  );
-}
-
 function AlertItem({ title, desc, type }: any) {
   return (
     <div className="p-3 hover:bg-slate-50 transition-colors">
       <div className="flex items-center gap-2 mb-1">
         <span className={`w-2 h-2 rounded-full ${type === 'critical' ? 'bg-red-500 animate-pulse' : 'bg-amber-500'}`}></span>
-        <span className="text-xs font-bold">{title}</span>
+        <span className="text-xs font-bold text-slate-800">{title}</span>
       </div>
-      <p className="text-[10px] text-slate-500 ml-4">{desc}</p>
+      <p className="text-[10px] text-slate-500 ml-4 uppercase font-medium">{desc}</p>
     </div>
   );
 }
