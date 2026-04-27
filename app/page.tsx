@@ -139,7 +139,7 @@ function LoginPage({ onSignUpClick, onForgotClick }: { onSignUpClick: () => void
         </div>
         <div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tighter uppercase">Sign In</h2>
-          <p className="text-red-700 text-[10px] font-bold tracking-[0.25em] uppercase mt-1">Mabuhay Vinyl Corporation</p>
+          <p className="text-red-700 text-[10px] font-bold tracking-[0.25em] uppercase mt-1">MVC - MIS INVENTORY SYSTEM</p>
         </div>
       </div>
       
@@ -264,7 +264,7 @@ function SignUpPage({ onSignInClick, onSignUpSuccess }: { onSignInClick: () => v
         </div>
         <div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tighter uppercase">Registration</h2>
-          <p className="text-red-700 text-[10px] font-bold tracking-[0.25em] uppercase mt-1">Mabuhay Vinyl Corporation</p>
+          <p className="text-red-700 text-[10px] font-bold tracking-[0.25em] uppercase mt-1">MVC - MIS INVENTORY SYSTEM</p>
         </div>
       </div>
       
@@ -380,7 +380,7 @@ function ForgotPasswordPage({ onBackToLogin }: { onBackToLogin: () => void }) {
         </div>
         <div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tighter uppercase">Reset Password</h2>
-          <p className="text-red-700 text-[10px] font-bold tracking-[0.25em] uppercase mt-1">Mabuhay Vinyl Corporation</p>
+          <p className="text-red-700 text-[10px] font-bold tracking-[0.25em] uppercase mt-1">MVC - MIS INVENTORY SYSTEM</p>
         </div>
       </div>
       
