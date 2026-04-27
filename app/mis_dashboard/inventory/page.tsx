@@ -122,7 +122,7 @@ export default function InventoryPage() {
     phone_numbers: [''],
     
     printer: 'No', printer_name: 'Epson L3110', 
-    backup: 'No', backup_schedule: 'Daily', 
+    backup: 'No', backup_schedule: 'Select', 
     // Parts Form Fields
     item_name: 'Monitor', brand_model: 'Dell', serial_number: '', quantity: 1, unit: 'Pcs', location: 'MIS STORAGE'
   };
@@ -914,8 +914,14 @@ export default function InventoryPage() {
                   <div className="col-span-full font-bold text-slate-800 border-b pb-1 mb-2 mt-2">Backup Settings</div>
                   <InputGroup label="Backup Configured?" value={formData.backup || 'No'} onChange={(v) => setFormData({...formData, backup: v})} type="select" options={['Yes', 'No']} />
                   {formData.backup?.toLowerCase() === 'yes' && (
-                    <InputGroup label="Backup Schedule" value={formData.backup_schedule || 'Daily'} onChange={(v) => setFormData({...formData, backup_schedule: v})} type="select" options={['Daily', 'Weekly', 'Monthly']} />
-                  )}
+                  <InputGroup 
+                    label="Backup Schedule" 
+                    value={formData.backup_schedule || 'Select'} 
+                    onChange={(v) => setFormData({...formData, backup_schedule: v})} 
+                    type="select" 
+                    options={['Select', 'Daily', 'Weekly', 'Monthly']} 
+                  />
+                )}
 
                 </div>
               ) : (
