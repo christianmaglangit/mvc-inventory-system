@@ -12,14 +12,14 @@ export default function SummaryDashboard() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile Nav State
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   const [stats, setStats] = useState({
     totalEquipment: 0,
     activePC: 0,
     partsInStorage: 0,
     alerts: [] as any[],
-    recentlyAdded: [] as any[] // Bag-o: Para sa mga na-add karon
+    recentlyAdded: [] as any[]
   });
 
   useEffect(() => {
@@ -39,7 +39,6 @@ export default function SummaryDashboard() {
           .select('*', { count: 'exact' })
           .eq('user_id', currentUser.id);
 
-        // GI-UPDATE: Gi-apil ang data sa parts
         const { count: partsCount, data: partsData } = await supabase
           .from('inventory_computer_parts')
           .select('*', { count: 'exact' })
@@ -49,22 +48,22 @@ export default function SummaryDashboard() {
           pc.kaspersky?.toLowerCase().includes('not active')
         ) || [];
 
-        // LOGIC PARA SA ADDED TODAY
+        // --- UPDATED LOGIC PARA SA ADDED TODAY ---
         const pcs = (pcData || []).map(item => ({ ...item, category: 'PC' }));
         const parts = (partsData || []).map(item => ({ ...item, category: 'Part' }));
         const allItems = [...pcs, ...parts];
 
-        const today = new Date();
         const isToday = (dateString: string) => {
-            const date = new Date(dateString);
-            return date.getDate() === today.getDate() &&
-                   date.getMonth() === today.getMonth() &&
-                   date.getFullYear() === today.getFullYear();
+          if (!dateString) return false;
+          const itemDate = new Date(dateString);
+          const today = new Date();
+          // Converts to Philippine Time format (MM/DD/YYYY) before comparing
+          return itemDate.toLocaleDateString('en-PH') === today.toLocaleDateString('en-PH');
         };
 
         const addedToday = allItems
-          .filter(item => item.created_at && isToday(item.created_at))
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()); // Latest first
+          .filter(item => isToday(item.created_at))
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()); 
 
         setStats({
           totalEquipment: (pcCount || 0) + (partsCount || 0),
@@ -115,7 +114,6 @@ export default function SummaryDashboard() {
             </div>
             <span className="text-lg font-bold tracking-tight text-red-900">MVC.IS</span>
           </div>
-          {/* Close button for mobile */}
           <button className="lg:hidden text-slate-400 p-1" onClick={() => setIsSidebarOpen(false)}>
             <X size={20} />
           </button>
@@ -144,7 +142,6 @@ export default function SummaryDashboard() {
       <main className="flex-1 flex flex-col min-w-0 bg-slate-50/50 w-full">
         <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-6 shrink-0 z-10 sticky top-0">
           <div className="flex items-center gap-4">
-            {/* HAMBURGER TOGGLE */}
             <button 
               onClick={() => setIsSidebarOpen(true)}
               className="p-2 -ml-2 rounded-md lg:hidden hover:bg-slate-100 text-slate-600"
@@ -177,7 +174,7 @@ export default function SummaryDashboard() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   
-                  {/* --- NEW RECENTLY ADDED SECTION --- */}
+                  {/* --- RECENTLY ADDED SECTION --- */}
                   <div className="lg:col-span-2 bg-white border border-slate-200 rounded-lg p-6 shadow-sm flex flex-col">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="font-bold text-slate-800">Added Today</h3>
