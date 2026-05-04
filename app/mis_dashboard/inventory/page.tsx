@@ -581,7 +581,7 @@ export default function InventoryPage() {
                       <tr>
                         <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">BUILDING</th>
                         <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">DEPARTMENT / OFFICE</th>
-                        <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 sticky left-0 z-40 text-slate-900 align-middle bg-blue-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] font-bold uppercase text-[10px] text-center">USER &quot;Full Name&quot;</th>
+                        <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 text-slate-900 align-middle bg-blue-50 font-bold uppercase text-[10px] text-center">USER &quot;Full Name&quot;</th>
                         <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">COMP. TYPE</th>
                         <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">EMAIL</th>
                         <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">DEVICE NAME</th>
@@ -627,7 +627,7 @@ export default function InventoryPage() {
                     <tr>
                       <th className="px-4 py-4 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">Item Name</th>
                       <th className="px-4 py-4 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">Brand</th>
-                      <th className="px-4 py-4 border-r border-b border-slate-200 sticky left-0 z-40 text-slate-900 text-left align-middle bg-blue-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] font-bold uppercase text-[10px]">User</th>
+                      <th className="px-4 py-4 border-r border-b border-slate-200 text-slate-900 text-left align-middle bg-blue-50 font-bold uppercase text-[10px]">User</th>
                       <th className="px-4 py-4 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">Qty</th>
                       <th className="px-4 py-4 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">Status</th>
                       <th className="px-4 py-4 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">Location</th>
@@ -645,8 +645,7 @@ export default function InventoryPage() {
                           <>
                             <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.building}</td>
                             <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.department}</td>
-                            {/* Sticky Left Column */}
-                            <td className="px-3 py-3.5 border-r border-b border-slate-100 font-bold text-slate-900 sticky left-0 z-10 bg-white transition-colors group-hover:bg-slate-50 uppercase shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">{item.user_full_name}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 font-bold text-slate-900 transition-colors uppercase">{item.user_full_name}</td>
                             <td className="px-3 py-3.5 border-r border-b border-slate-100 font-semibold uppercase">{item.computer_type}</td>
                             <td className="px-3 py-3.5 border-r border-b border-slate-100 text-blue-600 uppercase">{item.email}</td>
                             <td className="px-3 py-3.5 border-r border-b border-slate-100 font-bold uppercase">{item.device_name}</td>
@@ -682,8 +681,7 @@ export default function InventoryPage() {
                           <>
                             <td className="px-4 py-3.5 border-r border-b border-slate-50 font-bold text-slate-900 text-left uppercase">{item.item_name}</td>
                             <td className="px-4 py-3.5 border-r border-b border-slate-50 text-left uppercase">{item.brand_model}</td>
-                            {/* Sticky Left Column */}
-                            <td className="px-4 py-3.5 border-r border-b border-slate-50 bg-white sticky left-0 z-10 group-hover:bg-slate-50 text-left font-semibold uppercase shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">{item.user_full_name || 'N/A'}</td>
+                            <td className="px-4 py-3.5 border-r border-b border-slate-50 text-left font-semibold uppercase">{item.user_full_name || 'N/A'}</td>
                             <td className="px-4 py-3.5 border-r border-b border-slate-50 font-bold text-blue-600 uppercase">{item.quantity} {item.unit}</td>
                             <td className="px-4 py-3.5 border-r border-b border-slate-50 uppercase"><span className={`px-2 py-0.5 rounded-full text-[10px] border-slate-50 font-bold ${item.status === 'New' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'}`}>{item.status}</span></td>
                             <td className="px-4 py-3.5 border-r border-b border-slate-50 italic text-slate-500 uppercase">{item.location}</td>
