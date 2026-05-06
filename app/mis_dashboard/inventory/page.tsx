@@ -61,6 +61,7 @@ interface InputGroupProps {
   placeholder?: string;
   value: string | number;
   onChange: (v: string) => void;
+  onBlur?: () => void;
   required?: boolean;
   type?: 'text' | 'select' | 'number';
   options?: string[];
@@ -90,6 +91,19 @@ const epsList = [
 const romList = ['128GB', '240GB', '256GB', '480GB', '500GB', '512GB', '1TB', '2TB'];
 const printerList = ['Epson L3110', 'Epson L3210', 'Brother L210'];
 
+// Option lists for Computer Parts
+const stdItems = ['Monitor', 'Keyboard', 'Mouse', 'System Unit', 'RAM', 'SSD/HDD', 'AVR/UPS', 'Printer', 'Laptop', 'Router/Switch', 'RJ45 Connectors', 'Power Cable', 'VGA/HDMI Cable', 'LAN Cable'];
+const stdBrands = ['Dell', 'HP', 'Lenovo', 'Logitech', 'Asus', 'Acer', 'Generic'];
+const stdUnits = ['Pcs', 'Set', 'Unit', 'Box', 'Roll', 'Meters', 'Pack'];
+
+// Added Department names to the Location options for easier assignment
+const stdLocations = [
+  'MIS STORAGE', 'MIS OFFICE', 'CABINET A', 'PLANT STORAGE',
+  'President Office', 'VP - Office', 'HRD', 'TECHNICAL', 'EHS', 
+  'ENGINEERING', 'MATERIALS', 'MARKETING & SALES', 'FINANCE & ACCOUNTING', 
+  'SECURITY', 'IEM 1', 'IEM 2', 'QC', 'AVP', 'SHIFT MANAGERS', 'CONTRACTOR'
+];
+
 export default function InventoryPage() {
   const [activeCategory, setActiveCategory] = useState('Personal Computer');
   const [searchTerm, setSearchTerm] = useState('');
@@ -115,17 +129,13 @@ export default function InventoryPage() {
     processor_cpu: 'Core i5', processor_model: '', ram: '8GB', rom: '256GB', 
     storage_drive: 'SSD', kaspersky: 'Active', 
     
-    // --- PHONE STATE LOGIC ---
-    phone: 'No', 
-    phone_quantity: 1,
-    phone_conn_types: ['Local'],
-    phone_types: ['Landline'],
-    phone_numbers: [''],
-    
+    phone: 'No', phone_quantity: 1, phone_conn_types: ['Local'], phone_types: ['Landline'], phone_numbers: [''],
     printer: 'No', printer_name: 'Epson L3110', 
     backup: 'No', backup_schedule: 'Select', backup_time: 'Select',
+    
     // Parts Form Fields
-    item_name: 'Monitor', brand_model: 'Dell', serial_number: '', quantity: 1, unit: 'Pcs', location: 'MIS STORAGE'
+    item_name: 'Monitor', brand_model: 'Dell', serial_number: '', quantity: 1, unit: 'Pcs', location: 'MIS STORAGE',
+    custom_item_name: '', custom_brand: '', custom_unit: '', custom_location: '', capacity: ''
   };
 
   const [formData, setFormData] = useState<any>(initialForm);
@@ -223,8 +233,6 @@ export default function InventoryPage() {
           storage_drive: formData.storage_drive, kaspersky: formData.kaspersky, 
           
           phone: formData.phone, 
-          
-          // COMBINE PHONE ARRAYS INTO SINGLE STRINGS WITH ' / ' SEPARATOR
           phone_connection_type: isPhoneConnected ? formData.phone_conn_types.slice(0, formData.phone_quantity).join(' / ') : '',
           phone_type: isPhoneConnected ? formData.phone_types.slice(0, formData.phone_quantity).join(' / ') : '',
           phone_number: isPhoneConnected ? formData.phone_numbers.slice(0, formData.phone_quantity).join(' / ') : '',
@@ -236,11 +244,26 @@ export default function InventoryPage() {
           backup_time: formData.backup?.toLowerCase() === 'yes' ? formData.backup_time : ''
         };
       } else {
+        // --- COMPUTER PARTS LOGIC FOR CUSTOM ENTRIES ---
+        let finalItemName = formData.item_name === 'Others' ? formData.custom_item_name : formData.item_name;
+        
+        if (['RAM', 'SSD/HDD'].includes(formData.item_name) && formData.capacity) {
+          finalItemName = `${finalItemName} - ${formData.capacity}`;
+        }
+        
+        const finalBrand = formData.brand_model === 'Others' ? formData.custom_brand : formData.brand_model;
+        const finalUnit = formData.unit === 'Others' ? formData.custom_unit : formData.unit;
+        const finalLocation = formData.location === 'Others' ? formData.custom_location : formData.location;
+
         payload = { ...payload,
-          item_name: formData.item_name, brand_model: formData.brand_model,
-          serial_number: formData.serial_number, quantity: formData.quantity,
-          unit: formData.unit, status: formData.status, location: formData.location,
-          user_full_name: formData.status === 'Used' ? formData.user_full_name : ""
+          item_name: finalItemName, 
+          brand_model: finalBrand,
+          serial_number: formData.serial_number, 
+          quantity: formData.quantity,
+          unit: finalUnit, 
+          status: formData.status, 
+          location: finalLocation,
+          user_full_name: formData.status === 'Used' ? formData.user_full_name : "",
         };
       }
 
@@ -262,8 +285,14 @@ export default function InventoryPage() {
     }
   };
 
-  // Extract unique departments for the filter dropdown
-  const uniqueDepartments = Array.from(new Set(inventoryList.map(item => item.department?.toUpperCase()).filter(Boolean))).sort();
+  // Kukunin ang listahan ng departments/locations base sa category (TAMA NA ITO)
+  const uniqueDepartments = Array.from(new Set(
+    inventoryList.map(item => 
+      activeCategory === 'Personal Computer' 
+        ? item.department?.toUpperCase() 
+        : item.location?.toUpperCase()
+    ).filter(Boolean)
+  )).sort();
 
   const toggleDept = (dept: string) => {
     setSelectedExportDepts(prev => 
@@ -274,8 +303,13 @@ export default function InventoryPage() {
   // --- FILTER & SORT DATA ---
   const filteredData = inventoryList.filter(item => {
     const matchesSearch = (item.user_full_name || item.item_name || "").toLowerCase().includes(searchTerm.toLowerCase());
-    const itemDept = item.department?.toUpperCase() || "";
-    const matchesDept = selectedExportDepts.length === 0 || selectedExportDepts.includes(itemDept);
+    
+    // Kunin ang value depende sa category para sa filter
+    const compareValue = activeCategory === 'Personal Computer' 
+      ? (item.department?.toUpperCase() || "") 
+      : (item.location?.toUpperCase() || "");
+
+    const matchesDept = selectedExportDepts.length === 0 || selectedExportDepts.includes(compareValue);
     
     return matchesSearch && matchesDept;
   }).sort((a, b) => {
@@ -331,7 +365,7 @@ export default function InventoryPage() {
         const cellValue = row[index] ? row[index].toString() : "";
         return Math.max(max, cellValue.length);
       }, header.length);
-      return { wch: Math.min(maxLength + 2, 50) }; // cap width
+      return { wch: Math.min(maxLength + 2, 50) }; 
     });
 
     worksheet['!cols'] = colWidths;
@@ -407,21 +441,50 @@ export default function InventoryPage() {
       if (isValid) {
         setEditingId(item.id);
         
-        // Parse Multiple Phone Logic for Editing
-        const isPhone = item.phone?.toLowerCase() === 'yes';
-        const pConn = item.phone_connection_type ? item.phone_connection_type.split(' / ') : ['Local'];
-        const pType = item.phone_type ? item.phone_type.split(' / ') : ['Landline'];
-        const pNum = item.phone_number ? item.phone_number.split(' / ') : [''];
-        const pQty = isPhone ? Math.max(1, pNum.length) : 1;
+        if (activeCategory === 'Personal Computer') {
+          const isPhone = item.phone?.toLowerCase() === 'yes';
+          const pConn = item.phone_connection_type ? item.phone_connection_type.split(' / ') : ['Local'];
+          const pType = item.phone_type ? item.phone_type.split(' / ') : ['Landline'];
+          const pNum = item.phone_number ? item.phone_number.split(' / ') : [''];
+          const pQty = isPhone ? Math.max(1, pNum.length) : 1;
 
-        setFormData({ 
-          ...initialForm, 
-          ...item,
-          phone_quantity: pQty,
-          phone_conn_types: pConn,
-          phone_types: pType,
-          phone_numbers: pNum
-        });
+          setFormData({ 
+            ...initialForm, 
+            ...item,
+            phone_quantity: pQty,
+            phone_conn_types: pConn,
+            phone_types: pType,
+            phone_numbers: pNum
+          });
+        } else {
+          let parsedItemName = item.item_name || '';
+          let parsedCapacity = '';
+          
+          if (parsedItemName.includes(' - ')) {
+            const parts = parsedItemName.split(' - ');
+            parsedItemName = parts[0];
+            parsedCapacity = parts[1] || '';
+          }
+
+          const isCustomItem = !stdItems.includes(parsedItemName) && parsedItemName !== '';
+          const isCustomBrand = !stdBrands.includes(item.brand_model || '') && item.brand_model !== '';
+          const isCustomUnit = !stdUnits.includes(item.unit || '') && item.unit !== '';
+          const isCustomLocation = !stdLocations.includes(item.location || '') && item.location !== '';
+
+          setFormData({ 
+            ...initialForm, 
+            ...item,
+            item_name: isCustomItem ? 'Others' : parsedItemName,
+            custom_item_name: isCustomItem ? parsedItemName : '',
+            capacity: parsedCapacity,
+            brand_model: isCustomBrand ? 'Others' : (item.brand_model || 'Dell'),
+            custom_brand: isCustomBrand ? item.brand_model : '',
+            unit: isCustomUnit ? 'Others' : (item.unit || 'Pcs'),
+            custom_unit: isCustomUnit ? item.unit : '',
+            location: isCustomLocation ? 'Others' : (item.location || 'MIS STORAGE'),
+            custom_location: isCustomLocation ? item.location : ''
+          });
+        }
         
         setIsModalOpen(true);
       } else {
@@ -566,7 +629,15 @@ export default function InventoryPage() {
               
               <button onClick={handleExportPDF} className="w-full sm:w-auto flex-1 flex items-center justify-center border border-red-200 gap-2 px-4 py-2 bg-red-50 text-red-800 text-[10px] font-bold rounded-lg hover:bg-red-100 transition-all shadow-sm whitespace-nowrap"><Download size={14} /> PDF</button>
               <button onClick={handleExportExcel} className="w-full sm:w-auto flex-1 flex items-center justify-center border border-emerald-200 gap-2 px-4 py-2 bg-emerald-50 text-emerald-800 text-[10px] font-bold rounded-lg hover:bg-emerald-100 transition-all shadow-sm whitespace-nowrap"><Download size={14} /> Excel</button>
-              <button onClick={() => { setEditingId(null); setFormData(initialForm); setIsModalOpen(true); }} className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-900 text-white text-[10px] font-bold rounded-lg shadow-md active:scale-95 transition-all whitespace-nowrap"><Plus size={14} /> Add Record</button>
+              <button onClick={() => { 
+                setEditingId(null); 
+                // Set default status depending on active category
+                setFormData({
+                  ...initialForm,
+                  status: activeCategory === 'Personal Computer' ? 'Active' : 'New'
+                }); 
+                setIsModalOpen(true); 
+              }} className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-900 text-white text-[10px] font-bold rounded-lg shadow-md active:scale-95 transition-all whitespace-nowrap"><Plus size={14} /> Add Record</button>
             </div>
           </div>
 
@@ -935,18 +1006,52 @@ export default function InventoryPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                  {/* Item Name */}
                   <InputGroup label="Item Name" value={formData.item_name || ''} onChange={(v) => setFormData({...formData, item_name: v})} type="select" options={[
-                    'Monitor', 'Keyboard', 'Mouse', 'System Unit', 'RAM', 'SSD/HDD', 'AVR/UPS', 'Printer', 'Laptop', 'Router/Switch',
-                    'RJ45 Connectors', 'Power Cable', 'VGA/HDMI Cable', 'LAN Cable'
+                    ...stdItems, 'Others'
                   ]} />
-                  <InputGroup label="Brand / Model" value={formData.brand_model || ''} onChange={(v) => setFormData({...formData, brand_model: v})} type="select" options={['Dell', 'HP', 'Lenovo', 'Logitech', 'Asus', 'Acer', 'Generic']} />
+                  {formData.item_name === 'Others' && (
+                    <InputGroup label="Specify Item Name" placeholder="Ex: Graphics Card" value={formData.custom_item_name || ''} onChange={(v) => setFormData({...formData, custom_item_name: v})} required />
+                  )}
+                  {['RAM', 'SSD/HDD'].includes(formData.item_name) && (
+                    <InputGroup 
+                      label="Storage/Capacity (GB)" 
+                      placeholder="Ex: 16GB, 1TB" 
+                      value={formData.capacity || ''} 
+                      onChange={(v) => setFormData({...formData, capacity: v})} 
+                      onBlur={() => {
+                        // Kapag purely number lang ang nilagay, dagdagan ng "GB" pag-alis ng mouse
+                        if (formData.capacity && /^\d+$/.test(formData.capacity.trim())) {
+                          setFormData({...formData, capacity: formData.capacity.trim() + ' GB'});
+                        }
+                      }}
+                    />
+                  )}
+
+                  {/* Brand / Model */}
+                  <InputGroup label="Brand / Model" value={formData.brand_model || ''} onChange={(v) => setFormData({...formData, brand_model: v})} type="select" options={[...stdBrands, 'Others']} />
+                  {formData.brand_model === 'Others' && (
+                    <InputGroup label="Specify Brand/Model" placeholder="Ex: Samsung" value={formData.custom_brand || ''} onChange={(v) => setFormData({...formData, custom_brand: v})} required />
+                  )}
+
+                  {/* Quantity & Unit */}
                   <InputGroup label="Quantity" type="number" value={formData.quantity || 1} onChange={(v) => setFormData({...formData, quantity: parseInt(v) || 0})} />
-                  <InputGroup label="Unit" value={formData.unit || ''} onChange={(v) => setFormData({...formData, unit: v})} type="select" options={['Pcs', 'Set', 'Unit', 'Box', 'Roll', 'Meters', 'Pack']} />
+                  <InputGroup label="Unit" value={formData.unit || ''} onChange={(v) => setFormData({...formData, unit: v})} type="select" options={[...stdUnits, 'Others']} />
+                  {formData.unit === 'Others' && (
+                    <InputGroup label="Specify Unit" placeholder="Ex: Pair" value={formData.custom_unit || ''} onChange={(v) => setFormData({...formData, custom_unit: v})} required />
+                  )}
+
+                  {/* Status & Assignment */}
                   <InputGroup label="Status" value={formData.status || ''} onChange={(v) => setFormData({...formData, status: v})} type="select" options={['New', 'Used', 'Unused', 'Defective']} />
                   {formData.status === 'Used' && (
                     <InputGroup label="Fullname" placeholder="Enter assigned user" value={formData.user_full_name} onChange={(v) => setFormData({...formData, user_full_name: v})} required />
                   )}
-                  <InputGroup label="Location" value={formData.location || ''} onChange={(v) => setFormData({...formData, location: v})} type="select" options={['MIS STORAGE', 'MIS OFFICE', 'CABINET A', 'PLANT STORAGE']} />
+
+                  {/* Location (Combined Storage + Departments) */}
+                  <InputGroup label="Location" value={formData.location || ''} onChange={(v) => setFormData({...formData, location: v})} type="select" options={[...stdLocations, 'Others']} />
+                  {formData.location === 'Others' && (
+                    <InputGroup label="Specify Location" placeholder="Ex: Server Room" value={formData.custom_location || ''} onChange={(v) => setFormData({...formData, custom_location: v})} required />
+                  )}
                 </div>
               )}
             </div>
@@ -992,7 +1097,7 @@ function TabBtn({ label, icon, active, onClick }: any) {
   );
 }
 
-function InputGroup({ label, placeholder, value, onChange, required, type = 'text', options = [], maxLength }: InputGroupProps) {
+function InputGroup({ label, placeholder, value, onChange, onBlur, required, type = 'text', options = [], maxLength }: InputGroupProps) {
   return (
     <div className="flex flex-col gap-1.5 text-left w-full">
       <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{label} {required && '*'}</label>
@@ -1006,6 +1111,7 @@ function InputGroup({ label, placeholder, value, onChange, required, type = 'tex
           required={required} 
           placeholder={placeholder} 
           value={value} 
+          onBlur={onBlur}
           onChange={e => {
             const val = e.target.value;
             onChange(type === 'text' ? val.toUpperCase() : val);
