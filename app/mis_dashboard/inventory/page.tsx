@@ -92,7 +92,7 @@ const romList = ['128GB', '240GB', '256GB', '480GB', '500GB', '512GB', '1TB', '2
 const printerList = ['Epson L3110', 'Epson L3210', 'Brother L210'];
 
 // Option lists for Computer Parts
-const stdItems = ['Monitor', 'Keyboard', 'Mouse', 'System Unit', 'RAM', 'SSD/HDD', 'AVR/UPS', 'Printer', 'Laptop', 'Router/Switch', 'RJ45 Connectors', 'Power Cable', 'VGA/HDMI Cable', 'LAN Cable'];
+const stdItems = ['Monitor', 'Keyboard', 'Mouse', 'System Unit', 'NUC', 'RAM', 'SSD/HDD', 'AVR/UPS', 'Printer', 'Laptop', 'Router/Switch', 'RJ45 Connectors', 'Power Cable', 'VGA/HDMI Cable', 'LAN Cable'];
 const stdBrands = ['Dell', 'HP', 'Lenovo', 'Logitech', 'Asus', 'Acer', 'Generic'];
 const stdUnits = ['Pcs', 'Set', 'Unit', 'Box', 'Roll', 'Meters', 'Pack'];
 
