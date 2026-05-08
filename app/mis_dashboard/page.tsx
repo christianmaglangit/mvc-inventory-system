@@ -7,6 +7,9 @@ import {
   LayoutDashboard, HardDrive, Server, Activity, Laptop, 
   AlertTriangle, ShieldAlert, LogOut, Loader2, Menu, X, Clock
 } from 'lucide-react';
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
+} from 'recharts';
 
 export default function SummaryDashboard() {
   const router = useRouter();
@@ -19,7 +22,8 @@ export default function SummaryDashboard() {
     activePC: 0,
     partsInStorage: 0,
     alerts: [] as any[],
-    recentlyAdded: [] as any[]
+    recentlyAdded: [] as any[],
+    chartData: [] as any[]
   });
 
   useEffect(() => {
@@ -48,7 +52,6 @@ export default function SummaryDashboard() {
           pc.kaspersky?.toLowerCase().includes('not active')
         ) || [];
 
-        // --- UPDATED LOGIC PARA SA ADDED TODAY ---
         const pcs = (pcData || []).map(item => ({ ...item, category: 'PC' }));
         const parts = (partsData || []).map(item => ({ ...item, category: 'Part' }));
         const allItems = [...pcs, ...parts];
@@ -57,7 +60,6 @@ export default function SummaryDashboard() {
           if (!dateString) return false;
           const itemDate = new Date(dateString);
           const today = new Date();
-          // Converts to Philippine Time format (MM/DD/YYYY) before comparing
           return itemDate.toLocaleDateString('en-PH') === today.toLocaleDateString('en-PH');
         };
 
@@ -65,12 +67,50 @@ export default function SummaryDashboard() {
           .filter(item => isToday(item.created_at))
           .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()); 
 
+        // --- UPDATED LOGIC: GIDUGANG ANG YEAR SA GRAPH LABELS ---
+        const getLast6Months = () => {
+          const result = [];
+          for (let i = 5; i >= 0; i--) {
+            const d = new Date();
+            d.setMonth(d.getMonth() - i);
+            result.push({
+              // Example output: "Jan 2024"
+              name: `${d.toLocaleString('default', { month: 'short' })} ${d.getFullYear()}`, 
+              month: d.getMonth(),
+              year: d.getFullYear(),
+              pc: 0,
+              parts: 0
+            });
+          }
+          return result;
+        };
+
+        let monthlyData = getLast6Months();
+
+        const processChartData = (data: any[], type: 'pc' | 'parts') => {
+          if(!data) return;
+          data.forEach(item => {
+            const d = new Date(item.created_at);
+            const month = d.getMonth();
+            const year = d.getFullYear();
+            
+            const targetMonth = monthlyData.find(m => m.month === month && m.year === year);
+            if (targetMonth) {
+              targetMonth[type] += 1;
+            }
+          });
+        };
+
+        processChartData(pcData || [], 'pc');
+        processChartData(partsData || [], 'parts');
+
         setStats({
           totalEquipment: (pcCount || 0) + (partsCount || 0),
           activePC: pcCount || 0,
           partsInStorage: partsCount || 0,
           alerts: expiredKaspersky,
-          recentlyAdded: addedToday
+          recentlyAdded: addedToday,
+          chartData: monthlyData
         });
       } catch (error) {
         console.error("Error connecting inventory:", error);
@@ -94,7 +134,6 @@ export default function SummaryDashboard() {
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden relative">
       
-      {/* --- MOBILE OVERLAY --- */}
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-slate-900/50 z-30 lg:hidden backdrop-blur-sm"
@@ -102,7 +141,6 @@ export default function SummaryDashboard() {
         />
       )}
 
-      {/* --- SIDEBAR --- */}
       <aside className={`
         fixed inset-y-0 left-0 z-40 w-64 border-r border-slate-200 bg-white flex flex-col shrink-0 transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0
         ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
@@ -138,7 +176,6 @@ export default function SummaryDashboard() {
         </div>
       </aside>
 
-      {/* --- MAIN CONTENT --- */}
       <main className="flex-1 flex flex-col min-w-0 bg-slate-50/50 w-full">
         <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-6 shrink-0 z-10 sticky top-0">
           <div className="flex items-center gap-4">
@@ -158,13 +195,58 @@ export default function SummaryDashboard() {
           </div>
         </header>
 
-        {/* --- SCROLLING CONTENT AREA --- */}
         <div className="flex-1 overflow-auto p-4 md:p-8 flex flex-col custom-scrollbar">
           <div className="space-y-6 flex-1">
             {loading ? (
               <div className="h-64 flex items-center justify-center"><Loader2 className="animate-spin text-red-900" size={32}/></div>
             ) : (
               <>
+                <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm mb-2">
+                  <div className="mb-4">
+                    <h3 className="font-bold text-slate-800">Inventory Growth</h3>
+                    <p className="text-xs text-slate-500 font-medium">Monthly added items for the last 6 months</p>
+                  </div>
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={stats.chartData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                        <Tooltip 
+                          contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        />
+                        <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                        
+                        {/* --- GIDUGANG ANG ANIMATION PROPS DIRI SA <Line /> --- */}
+                        <Line 
+                          type="monotone" 
+                          name="Personal PCs" 
+                          dataKey="pc" 
+                          stroke="#10b981" 
+                          strokeWidth={3} 
+                          dot={{ r: 4, strokeWidth: 2 }} 
+                          activeDot={{ r: 6 }} 
+                          isAnimationActive={true}
+                          animationDuration={1500}
+                          animationEasing="ease-out"
+                        />
+                        <Line 
+                          type="monotone" 
+                          name="Computer Parts" 
+                          dataKey="parts" 
+                          stroke="#f59e0b" 
+                          strokeWidth={3} 
+                          dot={{ r: 4, strokeWidth: 2 }} 
+                          activeDot={{ r: 6 }} 
+                          isAnimationActive={true}
+                          animationDuration={1500}
+                          animationEasing="ease-out"
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <KpiCard title="Total Assets" value={stats.totalEquipment} trend="Personal items tracked" icon={<HardDrive size={20} />} color="blue" />
                   <KpiCard title="Personal Computers" value={stats.activePC} trend="Currently Deployed" icon={<Laptop size={20} />} color="emerald" />
@@ -173,8 +255,6 @@ export default function SummaryDashboard() {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  
-                  {/* --- RECENTLY ADDED SECTION --- */}
                   <div className="lg:col-span-2 bg-white border border-slate-200 rounded-lg p-6 shadow-sm flex flex-col">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="font-bold text-slate-800">Added Today</h3>
@@ -220,7 +300,6 @@ export default function SummaryDashboard() {
                       </div>
                   </div>
 
-                  {/* --- ACTION CENTER --- */}
                   <div className="lg:col-span-1 bg-white border border-red-200 rounded-lg overflow-hidden shadow-sm flex flex-col h-full">
                       <div className="bg-red-50 border-b border-red-100 p-4 flex items-center gap-2 shrink-0">
                         <ShieldAlert size={18} className="text-red-700" />
@@ -240,7 +319,6 @@ export default function SummaryDashboard() {
           </div>
         </div>
         
-        {/* --- EXTRICATED FIXED FOOTER --- */}
         <footer className="py-3 shrink-0 text-center bg-white text-[10px] font-bold text-slate-400 uppercase tracking-widest border-t border-slate-200 z-10 w-full shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)]">
           Developed by Christian B. Maglangit
         </footer>
@@ -256,7 +334,6 @@ export default function SummaryDashboard() {
   );
 }
 
-// --- HELPER COMPONENTS ---
 function NavItem({ icon, label, active = false, onClick }: any) {
   return (
     <button onClick={onClick} className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-all text-xs font-medium relative ${active ? 'bg-red-50 text-red-900 font-bold border-l-4 border-red-900' : 'text-slate-500 hover:bg-slate-50'}`}>
