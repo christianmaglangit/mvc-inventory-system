@@ -44,7 +44,9 @@ interface InventoryItem {
   printer_name?: string;
   backup?: string; 
   backup_schedule?: string; 
-  backup_time?: string; 
+  backup_time?: string;
+  ip_address?: string; // <-- ADDED
+  remarks?: string;    // <-- ALREADY EXISTED, NOW UTILIZED
   
   // Computer Parts
   item_name?: string;
@@ -132,6 +134,8 @@ export default function InventoryPage() {
     phone: 'No', phone_quantity: 1, phone_conn_types: ['Local'], phone_types: ['Landline'], phone_numbers: [''],
     printer: 'No', printer_name: 'Epson L3110', 
     backup: 'No', backup_schedule: 'Select', backup_time: 'Select',
+    ip_address: '', // <-- ADDED
+    remarks: '',    // <-- ADDED
     
     // Parts Form Fields
     item_name: 'Monitor', brand_model: 'Dell', serial_number: '', quantity: 1, unit: 'Pcs', location: 'MIS STORAGE',
@@ -241,7 +245,10 @@ export default function InventoryPage() {
           printer_name: formData.printer?.toLowerCase() === 'yes' ? formData.printer_name : '',
           backup: formData.backup, 
           backup_schedule: formData.backup?.toLowerCase() === 'yes' ? formData.backup_schedule : '',
-          backup_time: formData.backup?.toLowerCase() === 'yes' ? formData.backup_time : ''
+          backup_time: formData.backup?.toLowerCase() === 'yes' ? formData.backup_time : '',
+          
+          ip_address: formData.ip_address, // <-- ADDED
+          remarks: formData.remarks        // <-- ADDED
         };
       } else {
         // --- COMPUTER PARTS LOGIC FOR CUSTOM ENTRIES ---
@@ -285,7 +292,6 @@ export default function InventoryPage() {
     }
   };
 
-  // Kukunin ang listahan ng departments/locations base sa category (TAMA NA ITO)
   const uniqueDepartments = Array.from(new Set(
     inventoryList.map(item => 
       activeCategory === 'Personal Computer' 
@@ -304,7 +310,6 @@ export default function InventoryPage() {
   const filteredData = inventoryList.filter(item => {
     const matchesSearch = (item.user_full_name || item.item_name || "").toLowerCase().includes(searchTerm.toLowerCase());
     
-    // Kunin ang value depende sa category para sa filter
     const compareValue = activeCategory === 'Personal Computer' 
       ? (item.department?.toUpperCase() || "") 
       : (item.location?.toUpperCase() || "");
@@ -327,11 +332,9 @@ export default function InventoryPage() {
       return;
     }
 
-    let csvContent = "data:text/csv;charset=utf-8,";
-
-    // Define Headers
+    // Define Headers - ADDED IP AND REMARKS
     const headers = activeCategory === 'Personal Computer'
-      ? ["Building", "Department", "User Full Name", "Computer Type", "Email", "Device Name", "OS Edition", "OS Version", "Status", "MS Office Version", "MS Office Status", "Processor Brand", "Processor Gen", "Processor CPU", "Processor Model", "RAM", "ROM/Capacity", "Storage Drive", "EPS", "Phone Connected", "Phone Conn Type", "Phone Type", "Phone Number", "Printer Connected", "Printer Name", "Backup Configured", "Backup Schedule", "Backup Time"]
+      ? ["Building", "Department", "User Full Name", "Computer Type", "Email", "Device Name", "OS Edition", "OS Version", "Status", "MS Office Version", "MS Office Status", "Processor Brand", "Processor Gen", "Processor CPU", "Processor Model", "RAM", "ROM/Capacity", "Storage Drive", "EPS", "Phone Connected", "Phone Conn Type", "Phone Type", "Phone Number", "Printer Connected", "Printer Name", "Backup Configured", "Backup Schedule", "Backup Time", "IP Address", "Remarks"]
       : ["Item Name", "Brand/Model", "User", "Quantity", "Unit", "Status", "Location"];
 
     const tableData = filteredData.map(item => {
@@ -345,7 +348,9 @@ export default function InventoryPage() {
           item.phone || "", isPhone ? item.phone_connection_type || "" : "None", isPhone ? item.phone_type || "" : "None", isPhone ? item.phone_number || "" : "None",
           item.printer || "", item.printer?.toLowerCase() === 'yes' ? item.printer_name || "" : "None",
           item.backup || "", item.backup?.toLowerCase() === 'yes' ? item.backup_schedule || "" : "None",
-          item.backup?.toLowerCase() === 'yes' ? item.backup_time || "" : "None"
+          item.backup?.toLowerCase() === 'yes' ? item.backup_time || "" : "None",
+          item.ip_address || "", // <-- ADDED
+          item.remarks || ""     // <-- ADDED
         ];
       } else {
         return [
@@ -391,8 +396,9 @@ export default function InventoryPage() {
     doc.setFontSize(9);
     doc.text(`Inventory Report: ${activeCategory}`, 14, 28);
 
+    // ADDED IP AND REMARKS
     const tableColumn = activeCategory === 'Personal Computer' 
-      ? ["Bldg", "Dept", "User", "Type", "Device", "OS", "Status", "Office Ver", "Office Stat", "CPU", "RAM", "Drive", "EPS", "Printer", "Phone Type", "Phone #", "Backup"]
+      ? ["Bldg", "Dept", "User", "Type", "Device", "OS", "Status", "Office Ver", "Office Stat", "CPU", "RAM", "Drive", "EPS", "Printer", "Phone Type", "Phone #", "Backup", "IP Address", "Remarks"]
       : ["Item Name", "Brand/Model", "User", "Qty", "Unit", "Status", "Location"];
 
     const tableRows = filteredData.map(item => {
@@ -406,7 +412,9 @@ export default function InventoryPage() {
             item.printer?.toLowerCase() === 'yes' ? item.printer_name : "None",
             isPhone ? `${item.phone_connection_type}-${item.phone_type}` : "None",
             isPhone ? item.phone_number : "None",
-            item.backup?.toLowerCase() === 'yes' ? `${item.backup_schedule || ''} @ ${item.backup_time || ''}` : "None"
+            item.backup?.toLowerCase() === 'yes' ? `${item.backup_schedule || ''} @ ${item.backup_time || ''}` : "None",
+            item.ip_address || "", // <-- ADDED
+            item.remarks || ""     // <-- ADDED
           ]
         } else {
             return [
@@ -667,6 +675,12 @@ export default function InventoryPage() {
                         <th colSpan={3} className="px-3 py-2 border-r border-b border-slate-200 text-center bg-blue-50 font-bold uppercase text-slate-600 text-[10px]">PHONE</th>
                         <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-200 text-center bg-blue-50 font-bold uppercase text-slate-600 text-[10px]">PRINTER</th>
                         <th colSpan={3} className="px-3 py-2 border-r border-b border-slate-200 text-center bg-blue-50 font-bold uppercase text-slate-600 text-[10px]">BACKUP</th>
+                        
+                        {/* --- ADDED HEADERS --- */}
+                        <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">IP ADDRESS</th>
+                        <th rowSpan={2} className="px-3 py-3 border-r border-b border-slate-200 align-middle bg-blue-50 font-bold uppercase text-slate-600 text-[10px] text-center">REMARKS</th>
+                        {/* --------------------- */}
+
                         <th rowSpan={2} className="px-4 py-3 border-b text-center sticky right-0 bg-blue-50 border-l border-slate-200 align-middle z-40 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)] font-bold uppercase text-slate-600 text-[10px]">Actions</th>
                       </tr>
                       <tr>
@@ -708,7 +722,7 @@ export default function InventoryPage() {
                 </thead>
                 <tbody className="text-center relative z-0">
                   {loading ? (
-                    <tr><td colSpan={28} className="p-20 text-center border-b border-slate-100"><Loader2 className="animate-spin inline text-red-900" size={32}/></td></tr>
+                    <tr><td colSpan={30} className="p-20 text-center border-b border-slate-100"><Loader2 className="animate-spin inline text-red-900" size={32}/></td></tr>
                   ) : filteredData.length > 0 ? (
                     filteredData.map((item) => (
                       <tr key={item.id} className="hover:bg-slate-50/80 transition-colors group text-slate-700">
@@ -747,6 +761,11 @@ export default function InventoryPage() {
                             <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.backup}</td>
                             <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.backup?.toLowerCase() === 'yes' ? item.backup_schedule : '-'}</td>
                             <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.backup?.toLowerCase() === 'yes' ? item.backup_time : '-'}</td>
+                            
+                            {/* --- ADDED COLUMNS --- */}
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase">{item.ip_address || '-'}</td>
+                            <td className="px-3 py-3.5 border-r border-b border-slate-100 uppercase truncate max-w-[150px]" title={item.remarks}>{item.remarks || '-'}</td>
+                            {/* --------------------- */}
                           </>
                         ) : (
                           <>
@@ -769,7 +788,7 @@ export default function InventoryPage() {
                       </tr>
                     ))
                   ) : (
-                    <tr><td colSpan={28} className="p-10 text-center border-b border-slate-100 italic text-slate-400 uppercase text-[10px]">No records found</td></tr>
+                    <tr><td colSpan={30} className="p-10 text-center border-b border-slate-100 italic text-slate-400 uppercase text-[10px]">No records found</td></tr>
                   )}
                 </tbody>
               </table>
@@ -1002,6 +1021,18 @@ export default function InventoryPage() {
                       />
                     </>
                   )}
+
+                  {/* --- ADDED ADDITIONAL DETAILS (IP & REMARKS) --- */}
+                  <div className="col-span-full font-bold text-slate-800 border-b pb-1 mb-2 mt-2">Additional Details</div>
+                  
+                  <div className="col-span-full sm:col-span-1">
+                    <InputGroup label="IP Address" placeholder="Ex: 192.168.1.100" value={formData.ip_address || ''} onChange={(v) => setFormData({...formData, ip_address: v})} />
+                  </div>
+                  
+                  <div className="col-span-full sm:col-span-3">
+                    <InputGroup label="Remarks" placeholder="Any additional notes or observations..." value={formData.remarks || ''} onChange={(v) => setFormData({...formData, remarks: v})} />
+                  </div>
+                  {/* ----------------------------------------------- */}
 
                 </div>
               ) : (
